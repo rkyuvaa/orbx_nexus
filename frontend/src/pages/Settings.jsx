@@ -576,7 +576,6 @@ export default function Settings() {
     <div style={{ padding: 24, background: T.colors.bg, minHeight: '100%' }}>
       <div style={{ display: 'flex', borderBottom: `1px solid ${T.colors.border}`, marginBottom: 32, gap: 4 }}>
         <TabButton active={activeTab === 'branches'} label="Branches" icon="inventory" onClick={() => setActiveTab('branches')} />
-        <TabButton active={activeTab === 'categories'} label="Categories" icon="products" onClick={() => setActiveTab('categories')} />
         <TabButton active={activeTab === 'users'}    label="Users"     icon="customers" onClick={() => setActiveTab('users')} />
         <TabButton active={activeTab === 'roles'}    label="Roles"     icon="settings"  onClick={() => setActiveTab('roles')} />
         <TabButton active={activeTab === 'sync'}     label="Sync"      icon="sync"      onClick={() => setActiveTab('sync')} />
@@ -588,7 +587,6 @@ export default function Settings() {
       ) : (
         <>
           {activeTab === 'branches' && renderBranches()}
-          {activeTab === 'categories' && renderCategories()}
           {activeTab === 'users'    && renderUsers()}
           {activeTab === 'sync'     && renderSync()}
           {activeTab === 'invoice'  && renderInvoice()}
