@@ -73,14 +73,16 @@ export default function Layout({ children }) {
   const filteredNav = NAV_ITEMS.filter(item => {
     if (isAdmin) return true; // Superadmin sees everything
     
-    // Check if user has any permission in this group
     if (item.group) {
-        const groupPerms = permissions[item.group];
-        // If it's a settings page, only superadmin can see for now (or add a settings permission)
+        // If it's settings, only superadmin
         if (item.group === 'settings') return false; 
+
+        const groupPerms = permissions[item.group] || [];
         
-        // If they have any action (view, create, etc) in that group
-        if (!Array.isArray(groupPerms) || groupPerms.length === 0) return false;
+        // If they have ANY permission in this group (view, create, etc), show the nav item
+        if (Array.isArray(groupPerms) && groupPerms.length > 0) return true;
+        
+        return false;
     }
 
     return true;

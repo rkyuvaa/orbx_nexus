@@ -46,7 +46,7 @@ export default function Dashboard() {
 
   const filteredActions = ACTIONS.filter(a => {
     if (isAdmin) return true;
-    const groupPerms = permissions[a.group];
+    const groupPerms = permissions[a.group] || [];
     return Array.isArray(groupPerms) && groupPerms.includes(a.action);
   });
 
