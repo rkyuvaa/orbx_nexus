@@ -106,8 +106,9 @@ export default function Settings() {
   const [branches,  setBranches]  = useState([]);
   const [users,     setUsers]     = useState([]);
   const [roles,     setRoles]     = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading,   setLoading]   = useState(true);
-  const [showModal, setShowModal] = useState(null); // 'branch', 'user'
+  const [showModal, setShowModal] = useState(null); // 'branch', 'user', 'category'
   const [editingItem, setEditingItem] = useState(null);
   const [editingRole, setEditingRole] = useState(null);
 
@@ -121,15 +122,17 @@ export default function Settings() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [bRes, uRes, rRes] = await Promise.all([
+      const [bRes, uRes, rRes, cRes] = await Promise.all([
         fetch(`${API_URL}/branches`, { headers: { Authorization: `Bearer ${token}` } }),
         fetch(`${API_URL}/users`,    { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${API_URL}/roles`,    { headers: { Authorization: `Bearer ${token}` } })
+        fetch(`${API_URL}/roles`,    { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${API_URL}/categories`, { headers: { Authorization: `Bearer ${token}` } })
       ]);
-      const [bData, uData, rData] = await Promise.all([bRes.json(), uRes.json(), rRes.json()]);
+      const [bData, uData, rData, cData] = await Promise.all([bRes.json(), uRes.json(), rRes.json(), cRes.json()]);
       setBranches(Array.isArray(bData) ? bData : []);
       setUsers(Array.isArray(uData) ? uData : []);
       setRoles(Array.isArray(rData) ? rData : []);
+      setCategories(Array.isArray(cData) ? cData : []);
     } catch (err) {
       toast.error('Failed to load settings data');
     } finally {
@@ -179,6 +182,26 @@ export default function Settings() {
         toast.error(err.error || 'Error saving user');
       }
     } catch (err) { toast.error('Error saving user'); }
+  };
+
+  const handleSaveCategory = async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const data = Object.fromEntries(formData);
+    const isEdit = !!editingItem?.id;
+    try {
+      const res = await fetch(`${API_URL}/categories${isEdit ? '/' + editingItem.id : ''}`, {
+        method: isEdit ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ ...data, is_active: data.is_active === 'on' })
+      });
+      if (res.ok) {
+        toast.success(`Category ${isEdit ? 'updated' : 'created'} successfully`);
+        setShowModal(null);
+        setEditingItem(null);
+        fetchData();
+      }
+    } catch (err) { toast.error('Error saving category'); }
   };
 
   const handleSaveRole = async (e) => {
@@ -414,6 +437,44 @@ export default function Settings() {
     </div>
   );
 
+  const renderCategories = () => (
+    <div className="orbx-page-enter">
+      <SectionHeader 
+        title="Category Master" 
+        subtitle="Manage product departments and inventory groups" 
+        action={<button className="orbx-btn orbx-btn-primary" onClick={() => { setEditingItem(null); setShowModal('category'); }}>+ Add Category</button>}
+      />
+      <div className="orbx-card" style={{ padding: 0, overflow: 'hidden' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr style={{ background: T.colors.bgMuted, borderBottom: `1px solid ${T.colors.border}` }}>
+              <th style={{ textAlign: 'left', padding: '12px 20px', fontSize: 12, color: T.colors.textMuted }}>CATEGORY NAME</th>
+              <th style={{ textAlign: 'left', padding: '12px 20px', fontSize: 12, color: T.colors.textMuted }}>DESCRIPTION</th>
+              <th style={{ textAlign: 'left', padding: '12px 20px', fontSize: 12, color: T.colors.textMuted }}>STATUS</th>
+              <th style={{ textAlign: 'right', padding: '12px 20px', fontSize: 12, color: T.colors.textMuted }}>ACTIONS</th>
+            </tr>
+          </thead>
+          <tbody>
+            {categories.map(c => (
+              <tr key={c.id} className="orbx-table-row">
+                <td style={{ padding: '16px 20px', fontSize: 14, fontWeight: 600 }}>{c.name}</td>
+                <td style={{ padding: '16px 20px', fontSize: 13, color: T.colors.textMid }}>{c.description || '—'}</td>
+                <td style={{ padding: '16px 20px' }}>
+                  <span className={`orbx-badge ${c.is_active ? 'orbx-badge-success' : 'orbx-badge-danger'}`}>
+                    {c.is_active ? 'Active' : 'Inactive'}
+                  </span>
+                </td>
+                <td style={{ padding: '16px 20px', textAlign: 'right' }}>
+                  <button className="orbx-btn orbx-btn-ghost" onClick={() => { setEditingItem(c); setShowModal('category'); }} style={{ padding: 6 }}><Icon name="edit" size={14} /></button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+
   const renderSync = () => (
     <div className="orbx-page-enter">
       <SectionHeader title="Synchronization Settings" subtitle="Configure how the offline engine talks to the cloud" />
@@ -467,6 +528,7 @@ export default function Settings() {
     <div style={{ padding: 24, background: T.colors.bg, minHeight: '100%' }}>
       <div style={{ display: 'flex', borderBottom: `1px solid ${T.colors.border}`, marginBottom: 32, gap: 4 }}>
         <TabButton active={activeTab === 'branches'} label="Branches" icon="inventory" onClick={() => setActiveTab('branches')} />
+        <TabButton active={activeTab === 'categories'} label="Categories" icon="products" onClick={() => setActiveTab('categories')} />
         <TabButton active={activeTab === 'users'}    label="Users"     icon="customers" onClick={() => setActiveTab('users')} />
         <TabButton active={activeTab === 'roles'}    label="Roles"     icon="settings"  onClick={() => setActiveTab('roles')} />
         <TabButton active={activeTab === 'sync'}     label="Sync"      icon="sync"      onClick={() => setActiveTab('sync')} />
@@ -478,6 +540,7 @@ export default function Settings() {
       ) : (
         <>
           {activeTab === 'branches' && renderBranches()}
+          {activeTab === 'categories' && renderCategories()}
           {activeTab === 'users'    && renderUsers()}
           {activeTab === 'sync'     && renderSync()}
           {activeTab === 'invoice'  && renderInvoice()}
@@ -505,6 +568,32 @@ export default function Settings() {
               </div>
               <div style={{ display: 'flex', gap: 12, marginTop: 12 }}>
                 <button type="submit" className="orbx-btn orbx-btn-primary" style={{ flex: 1 }}>Save Branch</button>
+                <button type="button" className="orbx-btn orbx-btn-secondary" onClick={() => { setShowModal(null); setEditingItem(null); }}>Cancel</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showModal === 'category' && (
+        <div className="orbx-modal-overlay">
+          <div className="orbx-modal" style={{ maxWidth: 450, padding: 32 }}>
+            <h3 style={{ fontSize: 20, fontWeight: 800, marginBottom: 24 }}>{editingItem ? 'Edit Category' : 'New Category'}</h3>
+            <form onSubmit={handleSaveCategory} style={{ display: 'grid', gap: 20 }}>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 700, color: T.colors.textMid, marginBottom: 8, display: 'block' }}>CATEGORY NAME</label>
+                <input name="name" className="orbx-input" required defaultValue={editingItem?.name} placeholder="e.g. Grocery" />
+              </div>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 700, color: T.colors.textMid, marginBottom: 8, display: 'block' }}>DESCRIPTION</label>
+                <input name="description" className="orbx-input" defaultValue={editingItem?.description} placeholder="Short description..." />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <input type="checkbox" name="is_active" id="is_active" defaultChecked={editingItem ? editingItem.is_active : true} />
+                <label htmlFor="is_active" style={{ fontSize: 13, fontWeight: 600 }}>Category Active</label>
+              </div>
+              <div style={{ display: 'flex', gap: 12, marginTop: 12 }}>
+                <button type="submit" className="orbx-btn orbx-btn-primary" style={{ flex: 1 }}>Save Category</button>
                 <button type="button" className="orbx-btn orbx-btn-secondary" onClick={() => { setShowModal(null); setEditingItem(null); }}>Cancel</button>
               </div>
             </form>

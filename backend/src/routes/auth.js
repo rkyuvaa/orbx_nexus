@@ -104,6 +104,13 @@ router.post('/setup', async (req, res) => {
                 status VARCHAR(20) DEFAULT 'SUCCESS',
                 timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
+            CREATE TABLE IF NOT EXISTS categories (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(100) UNIQUE NOT NULL,
+                description TEXT,
+                is_active BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
             CREATE TABLE IF NOT EXISTS departments (
                 id SERIAL PRIMARY KEY,
                 name VARCHAR(100) UNIQUE NOT NULL,
@@ -116,6 +123,7 @@ router.post('/setup', async (req, res) => {
             ALTER TABLE roles ADD COLUMN IF NOT EXISTS permissions JSONB DEFAULT '{}';
             ALTER TABLE roles ADD COLUMN IF NOT EXISTS role_type VARCHAR(20) DEFAULT 'Branch';
             ALTER TABLE branches ADD COLUMN IF NOT EXISTS is_warehouse BOOLEAN DEFAULT FALSE;
+            ALTER TABLE branches ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
             DO $$ 
             BEGIN 
                 IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'branches_name_key') THEN
@@ -126,6 +134,7 @@ router.post('/setup', async (req, res) => {
             ALTER TABLE users ADD COLUMN IF NOT EXISTS allowed_modules JSONB DEFAULT '[]';
             ALTER TABLE users ADD COLUMN IF NOT EXISTS is_superadmin BOOLEAN DEFAULT FALSE;
             ALTER TABLE users ADD COLUMN IF NOT EXISTS department_id INTEGER;
+            ALTER TABLE products ADD COLUMN IF NOT EXISTS category_id INTEGER REFERENCES categories(id);
         `);
 
         // Step 2: (Optional) Check count for logging

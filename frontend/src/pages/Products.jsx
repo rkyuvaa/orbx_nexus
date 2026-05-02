@@ -5,52 +5,89 @@ import toast from 'react-hot-toast';
 
 const API_URL = '/api';
 
-const CATEGORIES = ['All', 'Grocery', 'Beverage', 'Dairy', 'Personal Care', 'Household', 'Snacks'];
-
-const EMPTY_FORM = { name: '', sku: '', barcode: '', price: '', tax: '5', stock: '', category: 'Grocery' };
+const EMPTY_FORM = { name: '', sku: '', barcode: '', price: '', tax: '5', stock: '', category_id: '' };
 
 export default function Products() {
   const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading,  setLoading]  = useState(true);
   const [search,   setSearch]   = useState('');
   const [catFilter,setCatFilter] = useState('All');
   const [showAdd,  setShowAdd]  = useState(false);
   const [form,     setForm]     = useState(EMPTY_FORM);
   const [saving,   setSaving]   = useState(false);
+  
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const canCreate = user.is_superadmin || (user.permissions?.products?.includes('create'));
   const canEdit   = user.is_superadmin || (user.permissions?.products?.includes('edit'));
 
-  const load = () => {
+  const loadData = async () => {
     setLoading(true);
-    fetch(`${API_URL}/api/products`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-    })
-      .then(r => r.ok ? r.json() : [])
-      .then(d => { setProducts(d || []); setLoading(false); })
-      .catch(() => setLoading(false));
+    try {
+      const [pRes, cRes] = await Promise.all([
+        fetch(`${API_URL}/products`, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }),
+        fetch(`${API_URL}/categories`, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } })
+      ]);
+      const [pData, cData] = await Promise.all([pRes.json(), cRes.json()]);
+      setProducts(Array.isArray(pData) ? pData : []);
+      setCategories(Array.isArray(cData) ? cData : []);
+      
+      // Auto-select first category for form if none selected
+      if (Array.isArray(cData) && cData.length > 0 && !form.category_id) {
+          setForm(v => ({ ...v, category_id: cData[0].id }));
+      }
+    } catch (err) {
+      toast.error('Failed to load products');
+    } finally {
+      setLoading(false);
+    }
   };
-  useEffect(load, []);
+
+  useEffect(() => {
+    loadData();
+  }, []);
 
   const filtered = products.filter(p =>
-    (catFilter === 'All' || p.category === catFilter) &&
+    (catFilter === 'All' || p.category_id === parseInt(catFilter)) &&
     (!search || p.name?.toLowerCase().includes(search.toLowerCase()) || p.sku?.toLowerCase().includes(search.toLowerCase()))
   );
 
   const handleSave = async () => {
     if (!form.name || !form.price) { toast.error('Name and price are required'); return; }
     setSaving(true);
+    const isEdit = !!form.id;
     try {
-      const res = await fetch(`${API_URL}/api/products`, {
-        method: 'POST',
+      const res = await fetch(`${API_URL}/products${isEdit ? '/' + form.id : ''}`, {
+        method: isEdit ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
         body: JSON.stringify({ ...form, price: parseFloat(form.price), tax: parseFloat(form.tax), stock: parseInt(form.stock) || 0 }),
       });
-      if (res.ok) { toast.success('Product added!'); setShowAdd(false); setForm(EMPTY_FORM); load(); }
+      if (res.ok) { 
+        toast.success(`Product ${isEdit ? 'updated' : 'added'}!`); 
+        setShowAdd(false); 
+        setForm(EMPTY_FORM); 
+        loadData(); 
+      }
       else { const e = await res.json(); toast.error(e.error || 'Failed to save'); }
     } catch { toast.error('Network error'); }
     setSaving(false);
   };
+
+  const handleDelete = async (id) => {
+      if (!window.confirm('Delete this product?')) return;
+      try {
+          const res = await fetch(`${API_URL}/products/${id}`, {
+              method: 'DELETE',
+              headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+          });
+          if (res.ok) { toast.success('Deleted'); loadData(); }
+      } catch (err) { toast.error('Delete failed'); }
+  }
+
+  const handleEdit = (p) => {
+      setForm({ ...p, tax: p.tax_percent || p.tax });
+      setShowAdd(true);
+  }
 
   const stockColor = (stock) => stock < 10 ? T.colors.danger : stock < 25 ? T.colors.warning : T.colors.success;
   const stockBadge = (stock) => stock < 10 ? 'orbx-badge-danger' : stock < 25 ? 'orbx-badge-warning' : 'orbx-badge-success';
@@ -62,10 +99,10 @@ export default function Products() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <div>
           <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 2 }}>Product Master</h2>
-          <p style={{ fontSize: 12, color: T.colors.textMuted }}>{products.length} products across {CATEGORIES.length - 1} categories</p>
+          <p style={{ fontSize: 12, color: T.colors.textMuted }}>{products.length} items cataloged</p>
         </div>
         {canCreate && (
-          <button className="orbx-btn orbx-btn-primary" onClick={() => setShowAdd(true)}>
+          <button className="orbx-btn orbx-btn-primary" onClick={() => { setForm(EMPTY_FORM); setShowAdd(true); }}>
             <Icon name="plus" size={14} /> Add Product
           </button>
         )}
@@ -80,8 +117,9 @@ export default function Products() {
           <input className="orbx-input" style={{ paddingLeft: 32 }} placeholder="Search products..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {CATEGORIES.map(c => (
-            <button key={c} onClick={() => setCatFilter(c)} className={`orbx-btn ${catFilter === c ? 'orbx-btn-primary' : 'orbx-btn-secondary'}`} style={{ padding: '7px 12px', fontSize: 12 }}>{c}</button>
+          <button onClick={() => setCatFilter('All')} className={`orbx-btn ${catFilter === 'All' ? 'orbx-btn-primary' : 'orbx-btn-secondary'}`} style={{ padding: '7px 12px', fontSize: 12 }}>All</button>
+          {categories.map(c => (
+            <button key={c.id} onClick={() => setCatFilter(c.id.toString())} className={`orbx-btn ${catFilter === c.id.toString() ? 'orbx-btn-primary' : 'orbx-btn-secondary'}`} style={{ padding: '7px 12px', fontSize: 12 }}>{c.name}</button>
           ))}
         </div>
       </div>
@@ -105,46 +143,49 @@ export default function Products() {
             <tbody>
               {filtered.length === 0 ? (
                 <tr><td colSpan={8} style={{ textAlign: 'center', padding: '40px', color: T.colors.textMuted, fontSize: 14 }}>No products found</td></tr>
-              ) : filtered.map(p => (
-                <tr key={p.id} className="orbx-table-row">
-                  <td style={{ padding: '12px 16px' }}>
-                    <div style={{ fontSize: 13.5, fontWeight: 600 }}>{p.name}</div>
-                    <div style={{ fontSize: 11, color: T.colors.textMuted }}>{p.id}</div>
-                  </td>
-                  <td style={{ padding: '12px 16px' }}>
-                    <div style={{ fontSize: 12, fontWeight: 500 }}>{p.sku}</div>
-                    <div style={{ fontSize: 10, color: T.colors.textMuted, fontFamily: 'monospace' }}>{p.barcode}</div>
-                  </td>
-                  <td style={{ padding: '12px 16px' }}><span className="orbx-badge orbx-badge-neutral">{p.category}</span></td>
-                  <td style={{ padding: '12px 16px', fontSize: 14, fontWeight: 700 }}>₹{parseFloat(p.price || 0).toLocaleString()}</td>
-                  <td style={{ padding: '12px 16px' }}><span className="orbx-badge orbx-badge-info">{p.tax || 0}%</span></td>
-                  <td style={{ padding: '12px 16px' }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: stockColor(p.stock || 0) }}>{p.stock ?? '—'}</span>
-                  </td>
-                  <td style={{ padding: '12px 16px' }}>
-                    <span className={`orbx-badge ${stockBadge(p.stock || 0)}`}>{stockLabel(p.stock || 0)}</span>
-                  </td>
-                  <td style={{ padding: '16px 20px', textAlign: 'right' }}>
-                    {canEdit && (
-                      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                        <button className="orbx-btn orbx-btn-ghost" onClick={() => handleEdit(p)} style={{ padding: 6 }}><Icon name="edit" size={14} /></button>
-                        <button className="orbx-btn orbx-btn-ghost" onClick={() => handleDelete(p.id)} style={{ padding: 6, color: T.colors.danger }}><Icon name="trash" size={14} /></button>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))}
+              ) : filtered.map(p => {
+                const cat = categories.find(c => c.id === p.category_id);
+                return (
+                  <tr key={p.id} className="orbx-table-row">
+                    <td style={{ padding: '12px 16px' }}>
+                      <div style={{ fontSize: 13.5, fontWeight: 600 }}>{p.name}</div>
+                      <div style={{ fontSize: 11, color: T.colors.textMuted }}>ID: {p.id}</div>
+                    </td>
+                    <td style={{ padding: '12px 16px' }}>
+                      <div style={{ fontSize: 12, fontWeight: 500 }}>{p.sku}</div>
+                      <div style={{ fontSize: 10, color: T.colors.textMuted, fontFamily: 'monospace' }}>{p.barcode}</div>
+                    </td>
+                    <td style={{ padding: '12px 16px' }}><span className="orbx-badge orbx-badge-neutral">{cat?.name || 'Uncategorized'}</span></td>
+                    <td style={{ padding: '12px 16px', fontSize: 14, fontWeight: 700 }}>₹{parseFloat(p.price || 0).toLocaleString()}</td>
+                    <td style={{ padding: '12px 16px' }}><span className="orbx-badge orbx-badge-info">{p.tax_percent || 0}%</span></td>
+                    <td style={{ padding: '12px 16px' }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: stockColor(p.stock || 0) }}>{p.stock ?? '—'}</span>
+                    </td>
+                    <td style={{ padding: '12px 16px' }}>
+                      <span className={`orbx-badge ${stockBadge(p.stock || 0)}`}>{stockLabel(p.stock || 0)}</span>
+                    </td>
+                    <td style={{ padding: '16px 20px', textAlign: 'right' }}>
+                      {canEdit && (
+                        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                          <button className="orbx-btn orbx-btn-ghost" onClick={() => handleEdit(p)} style={{ padding: 6 }}><Icon name="edit" size={14} /></button>
+                          <button className="orbx-btn orbx-btn-ghost" onClick={() => handleDelete(p.id)} style={{ padding: 6, color: T.colors.danger }}><Icon name="trash" size={14} /></button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}
       </div>
 
-      {/* Add Product Modal */}
+      {/* Add/Edit Product Modal */}
       {showAdd && (
         <div className="orbx-modal-overlay">
           <div className="orbx-modal" style={{ maxWidth: 500, padding: 28 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
-              <h3 style={{ fontSize: 17, fontWeight: 700 }}>Add New Product</h3>
+              <h3 style={{ fontSize: 17, fontWeight: 700 }}>{form.id ? 'Edit Product' : 'Add New Product'}</h3>
               <button onClick={() => setShowAdd(false)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}><Icon name="x" size={20} /></button>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -154,17 +195,17 @@ export default function Products() {
                 { label: 'Barcode',      key: 'barcode', ph: '13-digit barcode' },
                 { label: 'Price (₹)',    key: 'price', ph: '0.00', type: 'number' },
                 { label: 'Tax %',        key: 'tax',   ph: '0 / 5 / 12 / 18 / 28', type: 'number' },
-                { label: 'Stock Qty',    key: 'stock', ph: '0', type: 'number' },
+                { label: 'Initial Stock',key: 'stock', ph: '0', type: 'number', disabled: !!form.id },
               ].map(f => (
                 <div key={f.key} style={f.span ? { gridColumn: `span ${f.span}` } : {}}>
                   <label style={{ fontSize: 12, fontWeight: 600, color: T.colors.textMid, marginBottom: 5, display: 'block' }}>{f.label}</label>
-                  <input className="orbx-input" type={f.type || 'text'} placeholder={f.ph} value={form[f.key]} onChange={e => setForm(v => ({ ...v, [f.key]: e.target.value }))} />
+                  <input className="orbx-input" disabled={f.disabled} type={f.type || 'text'} placeholder={f.ph} value={form[f.key]} onChange={e => setForm(v => ({ ...v, [f.key]: e.target.value }))} />
                 </div>
               ))}
               <div>
                 <label style={{ fontSize: 12, fontWeight: 600, color: T.colors.textMid, marginBottom: 5, display: 'block' }}>Category</label>
-                <select className="orbx-input orbx-select" value={form.category} onChange={e => setForm(v => ({ ...v, category: e.target.value }))}>
-                  {CATEGORIES.filter(c => c !== 'All').map(c => <option key={c}>{c}</option>)}
+                <select className="orbx-input orbx-select" value={form.category_id} onChange={e => setForm(v => ({ ...v, category_id: e.target.value }))}>
+                  {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
             </div>

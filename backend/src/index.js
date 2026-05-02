@@ -253,6 +253,7 @@ const reportsRoutes = require('./routes/reports');
 const studioRoutes = require('./routes/studio');
 const suppliersRoutes = require('./routes/suppliers');
 const purchasesRoutes = require('./routes/purchases');
+const categoriesRoutes = require('./routes/categories');
 
 const app = express();
 const PORT = process.env.PORT || 5050;
@@ -279,6 +280,7 @@ app.use('/api/reports', reportsRoutes);
 app.use('/api/studio', studioRoutes);
 app.use('/api/suppliers', suppliersRoutes);
 app.use('/api/purchases', purchasesRoutes);
+app.use('/api/categories', categoriesRoutes);
 
 app.get('/', (req, res) => {
     res.send('Orbx Retail ERP API is running...');
