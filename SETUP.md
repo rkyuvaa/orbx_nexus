@@ -34,12 +34,12 @@ We need to create the database and the tables.
 2. **Create the Database**:
    Copy and paste this into the psql terminal:
    ```sql
-   CREATE DATABASE orbx_erp;
+   CREATE DATABASE orbx_nexus;
    ```
 
 3. **Connect to the Database**:
    ```sql
-   \c orbx_erp
+   \c orbx_nexus
    ```
 
 4. **Run the Schema Script**:
@@ -68,7 +68,7 @@ The backend connects the frontend to the database.
    Run this command to create the file directly:
    ```powershell
    echo "PORT=5000
-   DATABASE_URL=postgres://postgres:YOUR_PASSWORD@localhost:5432/orbx_erp
+   DATABASE_URL=postgres://postgres:YOUR_PASSWORD@localhost:5432/orbx_nexus
    JWT_SECRET=orbx_secret_key_2026" > .env
    ```
    *⚠️ Replace `YOUR_PASSWORD` with your actual PostgreSQL password.*

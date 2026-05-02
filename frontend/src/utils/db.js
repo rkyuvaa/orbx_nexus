@@ -1,6 +1,6 @@
 import Dexie from 'dexie';
 
-export const db = new Dexie('OrbxRetailERP');
+export const db = new Dexie('orbx_nexus');
 
 db.version(1).stores({
   products: '++id, sku, barcode, name, category, price',
