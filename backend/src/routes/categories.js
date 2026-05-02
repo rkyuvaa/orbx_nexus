@@ -3,35 +3,58 @@ const router = express.Router();
 const pool = require('../utils/db');
 const { authenticateToken } = require('../utils/auth');
 
+// Helper to ensure table structure is correct
+const ensureSchema = async () => {
+    try {
+        // 1. Create table if missing
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS categories (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(100) NOT NULL,
+                parent_id INTEGER REFERENCES categories(id) ON DELETE CASCADE,
+                level INTEGER DEFAULT 1,
+                description TEXT,
+                is_active BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        // 2. Add columns if missing
+        await pool.query(`ALTER TABLE categories ADD COLUMN IF NOT EXISTS parent_id INTEGER REFERENCES categories(id) ON DELETE CASCADE`);
+        await pool.query(`ALTER TABLE categories ADD COLUMN IF NOT EXISTS level INTEGER DEFAULT 1`);
+
+        // 3. Update Constraints (Allow same name under different parents)
+        await pool.query(`ALTER TABLE categories DROP CONSTRAINT IF EXISTS categories_name_key`);
+        
+        // Check if our unique constraint exists, if not add it
+        const checkConstraint = await pool.query(`
+            SELECT 1 FROM pg_constraint WHERE conname = 'categories_name_parent_id_key'
+        `);
+        if (checkConstraint.rows.length === 0) {
+            await pool.query(`ALTER TABLE categories ADD CONSTRAINT categories_name_parent_id_key UNIQUE (name, parent_id)`);
+        }
+    } catch (err) {
+        console.error('Category schema sync error:', err.message);
+    }
+};
+
 // GET /api/categories
-// Supports optional ?parent_id= and ?level= filters
 router.get('/', authenticateToken, async (req, res) => {
     const { parent_id, level } = req.query;
     try {
-        // Self-healing migration check
-        await pool.query(`
-            ALTER TABLE categories ADD COLUMN IF NOT EXISTS parent_id INTEGER REFERENCES categories(id) ON DELETE CASCADE;
-            ALTER TABLE categories ADD COLUMN IF NOT EXISTS level INTEGER DEFAULT 1;
-            DO $$ 
-            BEGIN 
-                IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'categories_name_key') THEN
-                    ALTER TABLE categories DROP CONSTRAINT categories_name_key;
-                END IF;
-                IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'categories_name_parent_id_key') THEN
-                    ALTER TABLE categories ADD CONSTRAINT categories_name_parent_id_key UNIQUE (name, parent_id);
-                END IF;
-            END $$;
-        `);
+        await ensureSchema();
 
         let query = 'SELECT * FROM categories';
         let params = [];
         let conditions = [];
 
         if (parent_id) {
-            conditions.push(`parent_id = $${params.length + 1}`);
-            params.push(parent_id);
-        } else if (parent_id === 'null') {
-            conditions.push(`parent_id IS NULL`);
+            if (parent_id === 'null') {
+                conditions.push(`parent_id IS NULL`);
+            } else {
+                conditions.push(`parent_id = $${params.length + 1}`);
+                params.push(parent_id);
+            }
         }
 
         if (level) {
@@ -55,6 +78,7 @@ router.get('/', authenticateToken, async (req, res) => {
 router.post('/', authenticateToken, async (req, res) => {
     const { name, parent_id, description } = req.body;
     try {
+        await ensureSchema();
         let level = 1;
         if (parent_id) {
             const parent = await pool.query('SELECT level FROM categories WHERE id = $1', [parent_id]);
@@ -78,6 +102,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
     const { id } = req.params;
     const { name, description, is_active } = req.body;
     try {
+        await ensureSchema();
         const result = await pool.query(
             'UPDATE categories SET name=$1, description=$2, is_active=$3 WHERE id=$4 RETURNING *',
             [name, description, is_active, id]
