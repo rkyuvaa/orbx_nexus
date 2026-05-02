@@ -5,16 +5,16 @@ import { tokens } from '../design/tokens';
 
 // ─── NAV ITEMS ────────────────────────────────────────────────────────────────
 const NAV_ITEMS = [
-  { path: '/',          label: 'Dashboard',    icon: 'dashboard', module: null },
-  { path: '/pos',       label: 'POS / Billing', icon: 'pos',      module: 'pos' },
-  { path: '/products',  label: 'Products',     icon: 'products',  module: 'inventory' },
-  { path: '/inventory', label: 'Inventory',    icon: 'inventory', module: 'inventory' },
-  { path: '/transfers', label: 'Transfers',    icon: 'transfers', module: 'transfers' },
-  { path: '/customers', label: 'Customers',    icon: 'customers', module: 'crm' },
-  { path: '/reports',   label: 'Reports',      icon: 'reports',   module: 'reports' },
-  { path: '/purchases', label: 'Purchases',    icon: 'cart',      module: 'purchases' },
-  { path: '/suppliers', label: 'Suppliers',    icon: 'supplier',  module: 'purchases' },
-  { path: '/settings',  label: 'Settings',     icon: 'settings',  module: 'settings' },
+  { path: '/',          label: 'Dashboard',    icon: 'dashboard', group: null },
+  { path: '/pos',       label: 'POS / Billing', icon: 'pos',      group: 'billing' },
+  { path: '/products',  label: 'Products',     icon: 'products',  group: 'products' },
+  { path: '/inventory', label: 'Inventory',    icon: 'inventory', group: 'inventory' },
+  { path: '/transfers', label: 'Transfers',    icon: 'transfers', group: 'transfers' },
+  { path: '/customers', label: 'Customers',    icon: 'customers', group: 'users' },
+  { path: '/reports',   label: 'Reports',      icon: 'reports',   group: 'reports' },
+  { path: '/purchases', label: 'Purchases',    icon: 'cart',      group: 'purchases' },
+  { path: '/suppliers', label: 'Suppliers',    icon: 'supplier',  group: 'purchases' },
+  { path: '/settings',  label: 'Settings',     icon: 'settings',  group: 'settings' },
 ];
 
 const PAGE_SUBTITLES = {
@@ -30,7 +30,6 @@ const PAGE_SUBTITLES = {
   '/settings':  'Configure branch, sync & invoice settings',
 };
 
-// ─── GLOBAL ORBX STYLES ───────────────────────────────────────────────────────
 // ─── LAYOUT COMPONENT ─────────────────────────────────────────────────────────
 export default function Layout({ children }) {
   const [collapsed,   setCollapsed]   = useState(false);
@@ -41,9 +40,9 @@ export default function Layout({ children }) {
   const location  = useLocation();
   const navigate  = useNavigate();
 
-  const user           = JSON.parse(localStorage.getItem('user') || '{}');
-  const isAdmin        = !!user.is_superadmin;
-  const allowedModules = user.allowed_modules || {};
+  const user        = JSON.parse(localStorage.getItem('user') || '{}');
+  const isAdmin     = !!user.is_superadmin;
+  const permissions = user.permissions || {};
 
   // Online/offline detection
   useEffect(() => {
@@ -70,16 +69,19 @@ export default function Layout({ children }) {
     document.documentElement.setAttribute('data-theme', next ? 'dark' : 'light');
   };
 
-  // Filter nav by permission and warehouse role
-  const isWarehouse = isAdmin || user.is_warehouse;
-  
+  // ─── RBAC FILTERING ────────────────────────────────────────────────
   const filteredNav = NAV_ITEMS.filter(item => {
-    // Basic module permission check
-    if (!isAdmin && item.module && !allowedModules[item.module]) return false;
+    if (isAdmin) return true; // Superadmin sees everything
     
-    // Strict Warehouse-only modules
-    const warehouseOnly = ['purchases']; 
-    if (item.module === 'purchases' && !isWarehouse) return false;
+    // Check if user has any permission in this group
+    if (item.group) {
+        const groupPerms = permissions[item.group];
+        // If it's a settings page, only superadmin can see for now (or add a settings permission)
+        if (item.group === 'settings') return false; 
+        
+        // If they have any action (view, create, etc) in that group
+        if (!Array.isArray(groupPerms) || groupPerms.length === 0) return false;
+    }
 
     return true;
   });
@@ -126,9 +128,6 @@ export default function Layout({ children }) {
             >
               <Icon name={item.icon} size={17} />
               {!collapsed && <span>{item.label}</span>}
-              {!collapsed && item.path === '/inventory' && (
-                <span style={{ marginLeft: 'auto', background: tokens.colors.danger, color: 'white', borderRadius: '99px', fontSize: 10, padding: '1px 6px', fontWeight: 700 }}>3</span>
-              )}
             </NavLink>
           );
         })}
@@ -163,7 +162,7 @@ export default function Layout({ children }) {
           {!collapsed && (
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.name || 'Admin User'}</div>
-              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>{user.branch_name || (isAdmin ? 'Super Admin' : 'Branch User')}</div>
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>{user.role_name || (isAdmin ? 'Super Admin' : 'Branch User')}</div>
             </div>
           )}
         </div>
@@ -173,7 +172,6 @@ export default function Layout({ children }) {
 
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', fontFamily: tokens.font.sans }}>
-
         {/* ─── Desktop Sidebar ─── */}
         <aside
           className="orbx-hide-mobile"
@@ -191,7 +189,6 @@ export default function Layout({ children }) {
           }}
         >
           {sidebarContent}
-          {/* Collapse toggle */}
           <button
             onClick={() => setCollapsed(!collapsed)}
             style={{
@@ -218,7 +215,6 @@ export default function Layout({ children }) {
 
         {/* ─── Main Area ─── */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
-
           {/* ─── Topbar ─── */}
           <header style={{
             background: tokens.colors.bgCard,
@@ -233,12 +229,10 @@ export default function Layout({ children }) {
             flexShrink: 0,
             boxShadow: tokens.shadows.sm,
           }}>
-            {/* Mobile menu toggle */}
             <button className="orbx-btn orbx-btn-ghost orbx-hide-desktop" onClick={() => setMobileOpen(true)} style={{ padding: 8 }}>
               <Icon name="menu" size={20} />
             </button>
 
-            {/* Page Title */}
             <div style={{ flex: 1 }}>
               <h1 style={{ fontSize: 17, fontWeight: 700, color: tokens.colors.text, lineHeight: 1.2 }}>{pageTitle}</h1>
               <p style={{ fontSize: 11, color: tokens.colors.textMuted, marginTop: 1 }}>
@@ -246,26 +240,21 @@ export default function Layout({ children }) {
               </p>
             </div>
 
-            {/* Right actions */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              {/* Online/Offline status */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: online ? tokens.colors.successSoft : tokens.colors.dangerSoft, color: online ? tokens.colors.success : tokens.colors.danger, padding: '5px 10px', borderRadius: tokens.radius.full, fontSize: 12, fontWeight: 600 }}>
                 <div className="orbx-pulse" style={{ width: 6, height: 6, borderRadius: '50%', background: online ? tokens.colors.success : tokens.colors.danger }} />
                 {online ? 'Online' : 'Offline'}
               </div>
 
-              {/* Bell */}
               <button className="orbx-btn orbx-btn-ghost" style={{ padding: 8, position: 'relative' }}>
                 <Icon name="bell" size={18} />
                 <span style={{ position: 'absolute', top: 4, right: 4, width: 8, height: 8, borderRadius: '50%', background: tokens.colors.danger, border: `2px solid ${tokens.colors.bgCard}` }} />
               </button>
 
-              {/* Sync */}
               <button className="orbx-btn orbx-btn-ghost" style={{ padding: 8 }} title="Sync data">
                 <Icon name="sync" size={18} color={syncPulse ? tokens.colors.accent : tokens.colors.textMuted} />
               </button>
 
-              {/* User chip */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: tokens.colors.bgMuted, border: `1px solid ${tokens.colors.border}`, borderRadius: tokens.radius.md, padding: '4px 10px 4px 4px' }}>
                 <div style={{ width: 26, height: 26, borderRadius: '50%', background: tokens.colors.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: tokens.colors.brand }}>
                   {(user.name || 'U').charAt(0).toUpperCase()}
@@ -278,7 +267,6 @@ export default function Layout({ children }) {
             </div>
           </header>
 
-          {/* ─── Page Content ─── */}
           <main style={{ flex: 1, overflowY: 'auto' }}>
             {children}
           </main>

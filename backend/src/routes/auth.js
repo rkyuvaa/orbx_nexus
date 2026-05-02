@@ -241,7 +241,7 @@ router.post('/login', async (req, res) => {
     const { email, password } = req.body;
     try {
         const result = await pool.query(`
-            SELECT u.*, r.name as role_name, b.is_warehouse 
+            SELECT u.*, r.name as role_name, r.permissions, r.role_type, b.is_warehouse, b.name as branch_name 
             FROM users u 
             LEFT JOIN roles r ON u.role_id = r.id 
             LEFT JOIN branches b ON u.branch_id = b.id
@@ -261,7 +261,9 @@ router.post('/login', async (req, res) => {
             id: user.id, 
             email: user.email, 
             is_superadmin: !!user.is_superadmin,
-            is_warehouse: !!user.is_warehouse
+            is_warehouse: !!user.is_warehouse,
+            role_type: user.role_type,
+            permissions: user.permissions
         });
 
         res.json({ 
@@ -271,9 +273,12 @@ router.post('/login', async (req, res) => {
                 name: user.name, 
                 email: user.email,
                 role_name: user.role_name,
+                role_type: user.role_type,
+                permissions: user.permissions || {},
                 is_superadmin: !!user.is_superadmin,
                 is_warehouse: !!user.is_warehouse,
                 branch_id: user.branch_id,
+                branch_name: user.branch_name,
                 allowed_modules: user.allowed_modules || {}
             } 
         });

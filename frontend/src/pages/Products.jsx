@@ -18,7 +18,8 @@ export default function Products() {
   const [form,     setForm]     = useState(EMPTY_FORM);
   const [saving,   setSaving]   = useState(false);
   const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const isWarehouse = user.is_superadmin || user.is_warehouse;
+  const canCreate = user.is_superadmin || (user.permissions?.products?.includes('create'));
+  const canEdit   = user.is_superadmin || (user.permissions?.products?.includes('edit'));
 
   const load = () => {
     setLoading(true);
@@ -63,7 +64,7 @@ export default function Products() {
           <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 2 }}>Product Master</h2>
           <p style={{ fontSize: 12, color: T.colors.textMuted }}>{products.length} products across {CATEGORIES.length - 1} categories</p>
         </div>
-        {isWarehouse && (
+        {canCreate && (
           <button className="orbx-btn orbx-btn-primary" onClick={() => setShowAdd(true)}>
             <Icon name="plus" size={14} /> Add Product
           </button>
@@ -123,11 +124,11 @@ export default function Products() {
                   <td style={{ padding: '12px 16px' }}>
                     <span className={`orbx-badge ${stockBadge(p.stock || 0)}`}>{stockLabel(p.stock || 0)}</span>
                   </td>
-                  <td style={{ padding: '12px 16px' }}>
-                    {isWarehouse && (
-                      <div style={{ display: 'flex', gap: 6 }}>
-                        <button className="orbx-btn orbx-btn-secondary" style={{ padding: '4px 10px', fontSize: 11 }}>Edit</button>
-                        <button className="orbx-btn orbx-btn-danger" style={{ padding: '4px 10px', fontSize: 11 }}>Delete</button>
+                  <td style={{ padding: '16px 20px', textAlign: 'right' }}>
+                    {canEdit && (
+                      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                        <button className="orbx-btn orbx-btn-ghost" onClick={() => handleEdit(p)} style={{ padding: 6 }}><Icon name="edit" size={14} /></button>
+                        <button className="orbx-btn orbx-btn-ghost" onClick={() => handleDelete(p.id)} style={{ padding: 6, color: T.colors.danger }}><Icon name="trash" size={14} /></button>
                       </div>
                     )}
                   </td>
