@@ -8,6 +8,21 @@ const { authenticateToken } = require('../utils/auth');
 router.get('/', authenticateToken, async (req, res) => {
     const { parent_id, level } = req.query;
     try {
+        // Self-healing migration check
+        await pool.query(`
+            ALTER TABLE categories ADD COLUMN IF NOT EXISTS parent_id INTEGER REFERENCES categories(id) ON DELETE CASCADE;
+            ALTER TABLE categories ADD COLUMN IF NOT EXISTS level INTEGER DEFAULT 1;
+            DO $$ 
+            BEGIN 
+                IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'categories_name_key') THEN
+                    ALTER TABLE categories DROP CONSTRAINT categories_name_key;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'categories_name_parent_id_key') THEN
+                    ALTER TABLE categories ADD CONSTRAINT categories_name_parent_id_key UNIQUE (name, parent_id);
+                END IF;
+            END $$;
+        `);
+
         let query = 'SELECT * FROM categories';
         let params = [];
         let conditions = [];
