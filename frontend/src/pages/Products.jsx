@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import Icon from '../components/Icon';
 import { tokens as T } from '../design/tokens';
 import toast from 'react-hot-toast';

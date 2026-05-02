@@ -30,7 +30,7 @@ export const startSyncEngine = (branchId, apiUrl) => {
 
       console.log(`Sync Engine: Sending ${pending.length} records to server...`);
       
-      const response = await fetch(`${apiUrl}/api/sync`, {
+      const response = await fetch(`${apiUrl}/sync`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ branch_id: branchId, records: pending })
@@ -61,7 +61,7 @@ export const fetchUpdates = async (branchId, apiUrl) => {
     const lastSync = lastSyncRecord ? lastSyncRecord.timestamp : '1970-01-01T00:00:00Z';
 
     try {
-        const res = await fetch(`${apiUrl}/api/sync/updates?branch_id=${branchId}&lastSync=${lastSync}`);
+        const res = await fetch(`${apiUrl}/sync/updates?branch_id=${branchId}&lastSync=${lastSync}`);
         if (res.ok) {
             const data = await res.json();
             if (data.products.length > 0) await db.products.bulkPut(data.products);

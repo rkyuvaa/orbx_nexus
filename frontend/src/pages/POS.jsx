@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import Icon from '../components/Icon';
 import { tokens } from '../design/tokens';
 import { db, queueForSync } from '../utils/db';
