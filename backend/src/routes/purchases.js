@@ -1,11 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../utils/db');
-const { authenticateToken, requireWarehouse } = require('../utils/auth');
+const { authenticateToken, hasPermission } = require('../utils/auth');
 const { getNextSequence } = require('../utils/sequence');
 
 // GET /api/purchases
-router.get('/', authenticateToken, async (req, res) => {
+router.get('/', authenticateToken, hasPermission('purchases', 'view'), async (req, res) => {
     try {
         const { branch_id } = req.query;
         let query = `
@@ -30,7 +30,7 @@ router.get('/', authenticateToken, async (req, res) => {
 });
 
 // GET /api/purchases/:id (Details)
-router.get('/:id', authenticateToken, async (req, res) => {
+router.get('/:id', authenticateToken, hasPermission('purchases', 'view'), async (req, res) => {
     try {
         const pRes = await pool.query(
             `SELECT p.*, s.name as supplier_name, b.name as branch_name, u.name as created_by_name
@@ -55,8 +55,8 @@ router.get('/:id', authenticateToken, async (req, res) => {
     }
 });
 
-// POST /api/purchases (Create PO) - Warehouse Only
-router.post('/', authenticateToken, requireWarehouse, async (req, res) => {
+// POST /api/purchases (Create PO)
+router.post('/', authenticateToken, hasPermission('purchases', 'create'), async (req, res) => {
     const { supplier_id, branch_id, items, notes, subtotal, tax_total, total_amount } = req.body;
     const client = await pool.connect();
     try {
@@ -89,8 +89,8 @@ router.post('/', authenticateToken, requireWarehouse, async (req, res) => {
     }
 });
 
-// PUT /api/purchases/:id/receive (Receive Goods) - Warehouse Only
-router.put('/:id/receive', authenticateToken, requireWarehouse, async (req, res) => {
+// PUT /api/purchases/:id/receive (Receive Goods)
+router.put('/:id/receive', authenticateToken, hasPermission('purchases', 'receive'), async (req, res) => {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
@@ -102,7 +102,6 @@ router.put('/:id/receive', authenticateToken, requireWarehouse, async (req, res)
         const purchase = pRes.rows[0];
         const itemsRes = await client.query('SELECT * FROM purchase_items WHERE purchase_id = $1', [req.params.id]);
         
-        // Update Inventory for each item
         for (const item of itemsRes.rows) {
             await client.query(`
                 INSERT INTO inventory (product_id, branch_id, quantity)
@@ -112,7 +111,6 @@ router.put('/:id/receive', authenticateToken, requireWarehouse, async (req, res)
             `, [item.product_id, purchase.branch_id, item.qty]);
         }
         
-        // Update status
         await client.query(
             'UPDATE purchases SET status = $1, received_at = CURRENT_TIMESTAMP WHERE id = $2',
             ['received', req.params.id]

@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../utils/db');
-const { authenticateToken, requireWarehouse } = require('../utils/auth');
+const { authenticateToken, hasPermission } = require('../utils/auth');
 
-// GET inventory for a specific branch or all (Read access for all authenticated users)
-router.get('/', authenticateToken, async (req, res) => {
+// GET inventory
+router.get('/', authenticateToken, hasPermission('inventory', 'view'), async (req, res) => {
     try {
         const { branch_id } = req.query;
         let query = `
@@ -27,14 +27,13 @@ router.get('/', authenticateToken, async (req, res) => {
     }
 });
 
-// POST adjustment (Manually update stock) - Warehouse Only
-router.post('/adjust', authenticateToken, requireWarehouse, async (req, res) => {
+// POST adjustment
+router.post('/adjust', authenticateToken, hasPermission('inventory', 'adjust'), async (req, res) => {
     const { product_id, branch_id, adjustment_qty, reason } = req.body;
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
         
-        // Update or Insert inventory
         const result = await client.query(`
             INSERT INTO inventory (product_id, branch_id, quantity)
             VALUES ($1, $2, $3)

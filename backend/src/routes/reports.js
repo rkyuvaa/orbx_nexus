@@ -1,18 +1,27 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../utils/db');
-const { authenticateToken } = require('../utils/auth');
+const { authenticateToken, hasPermission } = require('../utils/auth');
 
 // GET /api/reports/dashboard
 router.get('/dashboard', authenticateToken, async (req, res) => {
     try {
         const user = req.user;
-        const isWarehouse = user.is_superadmin || user.is_warehouse;
+        
+        // Fetch user permissions for reports
+        const pRes = await pool.query(`
+            SELECT r.role_type, r.permissions 
+            FROM users u 
+            JOIN roles r ON u.role_id = r.id 
+            WHERE u.id = $1
+        `, [user.id]);
+        
+        const { role_type, permissions } = pRes.rows[0];
+        const canViewAll = permissions.reports?.includes('view_all') && role_type === 'Warehouse';
         const branchId = user.branch_id;
 
-        // Condition for branch filtering
-        const branchFilter = isWarehouse ? '' : `AND branch_id = ${branchId}`;
-        const branchFilterWhere = isWarehouse ? '' : `WHERE branch_id = ${branchId}`;
+        const branchFilter = canViewAll ? '' : `AND branch_id = ${branchId}`;
+        const branchFilterWhere = canViewAll ? '' : `WHERE branch_id = ${branchId}`;
 
         // 1. Today's Sales
         const salesResult = await pool.query(`
@@ -60,7 +69,6 @@ router.get('/dashboard', authenticateToken, async (req, res) => {
             inventoryHighlights: highlights.rows
         });
     } catch (err) {
-        console.error('Dashboard data error:', err);
         res.status(500).json({ error: err.message });
     }
 });

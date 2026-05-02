@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../utils/db');
-const { authenticateToken, requireWarehouse } = require('../utils/auth');
+const { authenticateToken, hasPermission } = require('../utils/auth');
 
 // GET all products (Available for all authenticated users/branches)
-router.get('/', authenticateToken, async (req, res) => {
+router.get('/', authenticateToken, hasPermission('products', 'view'), async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM products ORDER BY name ASC');
     res.json(result.rows);
@@ -13,8 +13,8 @@ router.get('/', authenticateToken, async (req, res) => {
   }
 });
 
-// POST new product (Warehouse/Admin only)
-router.post('/', authenticateToken, requireWarehouse, async (req, res) => {
+// POST new product (Warehouse Admin/Staff with permission)
+router.post('/', authenticateToken, hasPermission('products', 'create'), async (req, res) => {
   const { sku, barcode, name, category, price, tax_percent, min_stock_level } = req.body;
   try {
     const result = await pool.query(
@@ -27,8 +27,8 @@ router.post('/', authenticateToken, requireWarehouse, async (req, res) => {
   }
 });
 
-// PUT update product (Warehouse/Admin only)
-router.put('/:id', authenticateToken, requireWarehouse, async (req, res) => {
+// PUT update product (Warehouse Admin/Staff with permission)
+router.put('/:id', authenticateToken, hasPermission('products', 'edit'), async (req, res) => {
   const { id } = req.params;
   const { sku, barcode, name, category, price, tax_percent, min_stock_level } = req.body;
   try {

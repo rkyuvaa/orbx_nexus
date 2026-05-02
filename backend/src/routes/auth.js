@@ -18,6 +18,7 @@ router.post('/setup', async (req, res) => {
             CREATE TABLE IF NOT EXISTS roles (
                 id SERIAL PRIMARY KEY,
                 name VARCHAR(50) UNIQUE NOT NULL,
+                role_type VARCHAR(20) DEFAULT 'Branch', -- Warehouse, Branch
                 permissions JSONB DEFAULT '{}'
             );
             CREATE TABLE IF NOT EXISTS branches (
@@ -131,24 +132,61 @@ router.post('/setup', async (req, res) => {
         console.log(`Current user count: ${userCount.rows[0].count}`);
 
         // Step 3: Create Default Roles (Upsert)
-        const adminRole = await client.query(
-            `INSERT INTO roles (name, permissions) 
-             VALUES ($1, $2) 
-             ON CONFLICT (name) DO UPDATE SET permissions = EXCLUDED.permissions 
-             RETURNING id`,
-            ['Administrator', JSON.stringify({ all: true })]
+        await client.query(
+            `INSERT INTO roles (name, role_type, permissions) 
+             VALUES ($1, $2, $3) 
+             ON CONFLICT (name) DO UPDATE SET permissions = EXCLUDED.permissions, role_type = EXCLUDED.role_type`,
+            ['Warehouse Admin', 'Warehouse', JSON.stringify({ 
+                products: ['view', 'create', 'edit'], 
+                purchases: ['view', 'create', 'edit', 'receive'], 
+                inventory: ['view', 'adjust', 'transfer'],
+                transfers: ['view', 'create', 'dispatch'],
+                billing: ['view', 'create'],
+                reports: ['view_all'],
+                users: ['view', 'create', 'edit']
+            })]
         );
         await client.query(
-            `INSERT INTO roles (name, permissions) 
-             VALUES ($1, $2) 
-             ON CONFLICT (name) DO UPDATE SET permissions = EXCLUDED.permissions`,
-            ['Warehouse Manager', JSON.stringify({ warehouse: true, inventory: true })]
+            `INSERT INTO roles (name, role_type, permissions) 
+             VALUES ($1, $2, $3) 
+             ON CONFLICT (name) DO UPDATE SET permissions = EXCLUDED.permissions, role_type = EXCLUDED.role_type`,
+            ['Warehouse Staff', 'Warehouse', JSON.stringify({ 
+                products: ['view'], 
+                purchases: ['view', 'create'], 
+                inventory: ['view', 'transfer'],
+                transfers: ['view', 'dispatch'],
+                billing: ['view'],
+                reports: ['view_own'],
+                users: []
+            })]
         );
         await client.query(
-            `INSERT INTO roles (name, permissions) 
-             VALUES ($1, $2) 
-             ON CONFLICT (name) DO UPDATE SET permissions = EXCLUDED.permissions`,
-            ['Branch User', JSON.stringify({ pos: true, inventory: true })]
+            `INSERT INTO roles (name, role_type, permissions) 
+             VALUES ($1, $2, $3) 
+             ON CONFLICT (name) DO UPDATE SET permissions = EXCLUDED.permissions, role_type = EXCLUDED.role_type`,
+            ['Branch Manager', 'Branch', JSON.stringify({ 
+                products: ['view'], 
+                purchases: ['view'], 
+                inventory: ['view'],
+                transfers: ['view', 'receive'],
+                billing: ['view', 'create', 'cancel'],
+                reports: ['view_own'],
+                users: ['view']
+            })]
+        );
+        await client.query(
+            `INSERT INTO roles (name, role_type, permissions) 
+             VALUES ($1, $2, $3) 
+             ON CONFLICT (name) DO UPDATE SET permissions = EXCLUDED.permissions, role_type = EXCLUDED.role_type`,
+            ['Branch Cashier', 'Branch', JSON.stringify({ 
+                products: ['view'], 
+                purchases: [], 
+                inventory: ['view'],
+                transfers: ['view', 'receive'],
+                billing: ['view', 'create'],
+                reports: ['view_own'],
+                users: []
+            })]
         );
 
         // Step 4: Create Default HQ Branch (Upsert)
@@ -161,6 +199,7 @@ router.post('/setup', async (req, res) => {
         );
 
         // Step 5: Create Superadmin User (Upsert)
+        const waRole = await client.query("SELECT id FROM roles WHERE name = 'Warehouse Admin'");
         const hashedPassword = await hashPassword('admin123');
         await client.query(
             `INSERT INTO users (name, email, password_hash, role_id, branch_id, is_superadmin, allowed_modules)
@@ -175,7 +214,7 @@ router.post('/setup', async (req, res) => {
                 'Admin', 
                 'admin@orbx.com', 
                 hashedPassword, 
-                adminRole.rows[0].id, 
+                waRole.rows[0].id, 
                 hqBranch.rows[0].id, 
                 true, 
                 JSON.stringify(['dashboard', 'pos', 'products', 'inventory', 'transfers', 'customers', 'reports', 'settings'])
