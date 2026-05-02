@@ -202,11 +202,65 @@ export default function Products() {
                   <input className="orbx-input" disabled={f.disabled} type={f.type || 'text'} placeholder={f.ph} value={form[f.key]} onChange={e => setForm(v => ({ ...v, [f.key]: e.target.value }))} />
                 </div>
               ))}
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 600, color: T.colors.textMid, marginBottom: 5, display: 'block' }}>Category</label>
-                <select className="orbx-input orbx-select" value={form.category_id} onChange={e => setForm(v => ({ ...v, category_id: e.target.value }))}>
-                  {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
+              <div style={{ gridColumn: 'span 2' }}>
+                <label style={{ fontSize: 12, fontWeight: 700, color: T.colors.textMid, marginBottom: 8, display: 'block' }}>HIERARCHICAL CATEGORY SELECTION</label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+                  <select 
+                    className="orbx-input orbx-select" 
+                    value={form.main_cat || ''} 
+                    onChange={e => setForm(v => ({ ...v, main_cat: e.target.value, category_id: e.target.value, cat: '', sub_cat: '', group: '', sub_group: '' }))}
+                  >
+                    <option value="">-- Main Category --</option>
+                    {categories.filter(c => !c.parent_id).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+
+                  {form.main_cat && (
+                    <select 
+                        className="orbx-input orbx-select" 
+                        value={form.cat || ''} 
+                        onChange={e => setForm(v => ({ ...v, cat: e.target.value, category_id: e.target.value, sub_cat: '', group: '', sub_group: '' }))}
+                    >
+                        <option value="">-- Category --</option>
+                        {categories.filter(c => c.parent_id === parseInt(form.main_cat)).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  )}
+
+                  {form.cat && (
+                    <select 
+                        className="orbx-input orbx-select" 
+                        value={form.sub_cat || ''} 
+                        onChange={e => setForm(v => ({ ...v, sub_cat: e.target.value, category_id: e.target.value, group: '', sub_group: '' }))}
+                    >
+                        <option value="">-- Sub Category --</option>
+                        {categories.filter(c => c.parent_id === parseInt(form.cat)).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  )}
+
+                  {form.sub_cat && (
+                    <select 
+                        className="orbx-input orbx-select" 
+                        value={form.group || ''} 
+                        onChange={e => setForm(v => ({ ...v, group: e.target.value, category_id: e.target.value, sub_group: '' }))}
+                    >
+                        <option value="">-- Group --</option>
+                        {categories.filter(c => c.parent_id === parseInt(form.sub_cat)).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  )}
+
+                  {form.group && (
+                    <select 
+                        className="orbx-input orbx-select" 
+                        value={form.sub_group || ''} 
+                        onChange={e => setForm(v => ({ ...v, sub_group: e.target.value, category_id: e.target.value }))}
+                    >
+                        <option value="">-- Sub Group --</option>
+                        {categories.filter(c => c.parent_id === parseInt(form.group)).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  )}
+                </div>
+                <p style={{ fontSize: 10, color: T.colors.textMuted, marginTop: 6 }}>
+                    Current Mapping: {categories.find(c => c.id === parseInt(form.category_id))?.name || 'Root'}
+                </p>
               </div>
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 20 }}>

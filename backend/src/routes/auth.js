@@ -106,10 +106,13 @@ router.post('/setup', async (req, res) => {
             );
             CREATE TABLE IF NOT EXISTS categories (
                 id SERIAL PRIMARY KEY,
-                name VARCHAR(100) UNIQUE NOT NULL,
+                name VARCHAR(100) NOT NULL,
+                parent_id INTEGER REFERENCES categories(id) ON DELETE CASCADE,
+                level INTEGER DEFAULT 1, -- 1: Main, 2: Category, 3: Sub, 4: Group, 5: Sub Group
                 description TEXT,
                 is_active BOOLEAN DEFAULT TRUE,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(name, parent_id)
             );
             CREATE TABLE IF NOT EXISTS departments (
                 id SERIAL PRIMARY KEY,

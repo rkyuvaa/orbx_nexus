@@ -437,43 +437,91 @@ export default function Settings() {
     </div>
   );
 
-  const renderCategories = () => (
-    <div className="orbx-page-enter">
-      <SectionHeader 
-        title="Category Master" 
-        subtitle="Manage product departments and inventory groups" 
-        action={<button className="orbx-btn orbx-btn-primary" onClick={() => { setEditingItem(null); setShowModal('category'); }}>+ Add Category</button>}
-      />
-      <div className="orbx-card" style={{ padding: 0, overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ background: T.colors.bgMuted, borderBottom: `1px solid ${T.colors.border}` }}>
-              <th style={{ textAlign: 'left', padding: '12px 20px', fontSize: 12, color: T.colors.textMuted }}>CATEGORY NAME</th>
-              <th style={{ textAlign: 'left', padding: '12px 20px', fontSize: 12, color: T.colors.textMuted }}>DESCRIPTION</th>
-              <th style={{ textAlign: 'left', padding: '12px 20px', fontSize: 12, color: T.colors.textMuted }}>STATUS</th>
-              <th style={{ textAlign: 'right', padding: '12px 20px', fontSize: 12, color: T.colors.textMuted }}>ACTIONS</th>
-            </tr>
-          </thead>
-          <tbody>
-            {categories.map(c => (
-              <tr key={c.id} className="orbx-table-row">
-                <td style={{ padding: '16px 20px', fontSize: 14, fontWeight: 600 }}>{c.name}</td>
-                <td style={{ padding: '16px 20px', fontSize: 13, color: T.colors.textMid }}>{c.description || '—'}</td>
-                <td style={{ padding: '16px 20px' }}>
-                  <span className={`orbx-badge ${c.is_active ? 'orbx-badge-success' : 'orbx-badge-danger'}`}>
-                    {c.is_active ? 'Active' : 'Inactive'}
-                  </span>
-                </td>
-                <td style={{ padding: '16px 20px', textAlign: 'right' }}>
-                  <button className="orbx-btn orbx-btn-ghost" onClick={() => { setEditingItem(c); setShowModal('category'); }} style={{ padding: 6 }}><Icon name="edit" size={14} /></button>
-                </td>
-              </tr>
+  const [categoryPath, setCategoryPath] = useState([]); // Array of {id, name}
+
+  const renderCategories = () => {
+    const currentParentId = categoryPath.length > 0 ? categoryPath[categoryPath.length - 1].id : null;
+    const currentLevel = categoryPath.length + 1;
+    const levelNames = ['Main Category', 'Category', 'Sub Category', 'Group', 'Sub Group'];
+    const currentLevelName = levelNames[currentLevel - 1];
+
+    const filteredCats = categories.filter(c => c.parent_id === currentParentId);
+
+    return (
+      <div className="orbx-page-enter">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+            <button 
+                className="orbx-btn orbx-btn-ghost" 
+                style={{ padding: '4px 8px' }}
+                onClick={() => setCategoryPath([])}
+            >
+                <Icon name="dashboard" size={14} /> Root
+            </button>
+            {categoryPath.map((p, i) => (
+                <React.Fragment key={p.id}>
+                    <Icon name="plus" size={10} style={{ transform: 'rotate(90deg)', opacity: 0.5 }} />
+                    <button 
+                        className="orbx-btn orbx-btn-ghost" 
+                        style={{ padding: '4px 8px' }}
+                        onClick={() => setCategoryPath(categoryPath.slice(0, i + 1))}
+                    >
+                        {p.name}
+                    </button>
+                </React.Fragment>
             ))}
-          </tbody>
-        </table>
+        </div>
+
+        <SectionHeader 
+          title={`${currentLevelName}s`} 
+          subtitle={categoryPath.length > 0 ? `Managing items under ${categoryPath[categoryPath.length - 1].name}` : `Managing top-level ${currentLevelName}s`} 
+          action={currentLevel <= 5 && <button className="orbx-btn orbx-btn-primary" onClick={() => { setEditingItem({ parent_id: currentParentId }); setShowModal('category'); }}>+ Add {currentLevelName}</button>}
+        />
+        <div className="orbx-card" style={{ padding: 0, overflow: 'hidden' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: T.colors.bgMuted, borderBottom: `1px solid ${T.colors.border}` }}>
+                <th style={{ textAlign: 'left', padding: '12px 20px', fontSize: 12, color: T.colors.textMuted }}>NAME</th>
+                <th style={{ textAlign: 'left', padding: '12px 20px', fontSize: 12, color: T.colors.textMuted }}>DESCRIPTION</th>
+                <th style={{ textAlign: 'left', padding: '12px 20px', fontSize: 12, color: T.colors.textMuted }}>STATUS</th>
+                <th style={{ textAlign: 'right', padding: '12px 20px', fontSize: 12, color: T.colors.textMuted }}>ACTIONS</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredCats.length === 0 ? (
+                <tr><td colSpan={4} style={{ padding: 40, textAlign: 'center', color: T.colors.textMuted }}>No items found at this level</td></tr>
+              ) : filteredCats.map(c => (
+                <tr key={c.id} className="orbx-table-row">
+                  <td style={{ padding: '16px 20px', fontSize: 14, fontWeight: 600 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        {c.name}
+                        {c.level < 5 && (
+                             <button 
+                                className="orbx-btn orbx-btn-ghost" 
+                                style={{ padding: '2px 8px', fontSize: 10, background: T.colors.bgMuted }}
+                                onClick={() => setCategoryPath([...categoryPath, { id: c.id, name: c.name }])}
+                            >
+                                View {levelNames[c.level]}s
+                            </button>
+                        )}
+                      </div>
+                  </td>
+                  <td style={{ padding: '16px 20px', fontSize: 13, color: T.colors.textMid }}>{c.description || '—'}</td>
+                  <td style={{ padding: '16px 20px' }}>
+                    <span className={`orbx-badge ${c.is_active ? 'orbx-badge-success' : 'orbx-badge-danger'}`}>
+                      {c.is_active ? 'Active' : 'Inactive'}
+                    </span>
+                  </td>
+                  <td style={{ padding: '16px 20px', textAlign: 'right' }}>
+                    <button className="orbx-btn orbx-btn-ghost" onClick={() => { setEditingItem(c); setShowModal('category'); }} style={{ padding: 6 }}><Icon name="edit" size={14} /></button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderSync = () => (
     <div className="orbx-page-enter">
@@ -578,11 +626,16 @@ export default function Settings() {
       {showModal === 'category' && (
         <div className="orbx-modal-overlay">
           <div className="orbx-modal" style={{ maxWidth: 450, padding: 32 }}>
-            <h3 style={{ fontSize: 20, fontWeight: 800, marginBottom: 24 }}>{editingItem ? 'Edit Category' : 'New Category'}</h3>
+            <h3 style={{ fontSize: 20, fontWeight: 800, marginBottom: 8 }}>{editingItem?.id ? 'Edit Item' : 'New Item'}</h3>
+            <p style={{ fontSize: 13, color: T.colors.textMuted, marginBottom: 24 }}>
+                {editingItem?.id ? 'Updating details' : `Creating a new ${['Main Category', 'Category', 'Sub Category', 'Group', 'Sub Group'][(editingItem?.level || (categoryPath.length + 1)) - 1]}`}
+                {editingItem?.parent_id && ` under ${categoryPath[categoryPath.length - 1]?.name}`}
+            </p>
             <form onSubmit={handleSaveCategory} style={{ display: 'grid', gap: 20 }}>
+              <input type="hidden" name="parent_id" defaultValue={editingItem?.parent_id} />
               <div>
-                <label style={{ fontSize: 12, fontWeight: 700, color: T.colors.textMid, marginBottom: 8, display: 'block' }}>CATEGORY NAME</label>
-                <input name="name" className="orbx-input" required defaultValue={editingItem?.name} placeholder="e.g. Grocery" />
+                <label style={{ fontSize: 12, fontWeight: 700, color: T.colors.textMid, marginBottom: 8, display: 'block' }}>NAME</label>
+                <input name="name" className="orbx-input" required defaultValue={editingItem?.name} placeholder="Enter name..." />
               </div>
               <div>
                 <label style={{ fontSize: 12, fontWeight: 700, color: T.colors.textMid, marginBottom: 8, display: 'block' }}>DESCRIPTION</label>
