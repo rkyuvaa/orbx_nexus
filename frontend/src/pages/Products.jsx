@@ -3,7 +3,7 @@ import Icon from '../components/Icon';
 import { tokens as T } from '../design/tokens';
 import toast from 'react-hot-toast';
 
-const API_URL = `http://${window.location.hostname}:5000`;
+const API_URL = `http://${window.location.hostname}:5050`;
 
 const CATEGORIES = ['All', 'Grocery', 'Beverage', 'Dairy', 'Personal Care', 'Household', 'Snacks'];
 

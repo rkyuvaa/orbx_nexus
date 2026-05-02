@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import Icon from '../components/Icon';
 import { tokens as T } from '../design/tokens';
 
-const API_URL = `http://${window.location.hostname}:5000`;
+const API_URL = `http://${window.location.hostname}:5050`;
 
 const WEEK_DATA = [
   { day: 'Mon', sales: 38200, orders: 92 },  { day: 'Tue', sales: 42100, orders: 108 },

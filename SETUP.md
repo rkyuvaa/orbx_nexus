@@ -67,7 +67,7 @@ The backend connects the frontend to the database.
 3. **Create .env File**:
    Run this command to create the file directly:
    ```powershell
-   echo "PORT=5000
+   echo "PORT=5050
    DATABASE_URL=postgres://postgres:YOUR_PASSWORD@localhost:5432/orbx_nexus
    JWT_SECRET=orbx_secret_key_2026" > .env
    ```
@@ -77,7 +77,7 @@ The backend connects the frontend to the database.
    ```bash
    npm run dev
    ```
-   *Expected Output: `Server running on port 5000`*
+   *Expected Output: `Server running on port 5050`*
 
 ---
 
@@ -161,5 +161,5 @@ To ensure the app stays online even after you close the terminal, use **PM2**:
 ---
 
 ## ❓ Troubleshooting
-- **Error: EADDRINUSE**: Another process is using port 5000 or 5173. Restart your computer or kill the process.
+- **Error: EADDRINUSE**: Another process is using port 5050 or 5173. Restart your computer or kill the process.
 - **Connection Refused**: Your PostgreSQL service is not running. Open "Services" in Windows and start `postgresql-x64-16`.

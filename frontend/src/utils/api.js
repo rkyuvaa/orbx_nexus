@@ -1,4 +1,4 @@
-const API_URL = `http://${window.location.hostname}:5000/api`;
+const API_URL = `http://${window.location.hostname}:5050/api`;
 
 const api = {
     get: async (url) => {

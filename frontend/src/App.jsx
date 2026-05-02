@@ -19,7 +19,7 @@ import { startSyncEngine, fetchUpdates } from './utils/db';
 // Mock Branch ID for testing
 const BRANCH_ID = 1;
 // Dynamically set API URL based on current host
-const API_URL = `http://${window.location.hostname}:5000`;
+const API_URL = `http://${window.location.hostname}:5050`;
 
 function PrivateRoute({ children, module, title }) {
   const isAuthenticated = !!localStorage.getItem('token');

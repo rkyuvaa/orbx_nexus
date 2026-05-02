@@ -3,7 +3,7 @@ import Icon from '../components/Icon';
 import { tokens as T } from '../design/tokens';
 import toast from 'react-hot-toast';
 
-const API_URL = `http://${window.location.hostname}:5000`;
+const API_URL = `http://${window.location.hostname}:5050`;
 
 const MOCK = [
   { id: 'TRF-001', from: 'Warehouse',   to: 'Main Branch', items: 24, status: 'shipped',  date: 'May 2, 2026',  notes: 'Regular restock' },

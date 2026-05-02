@@ -4,7 +4,7 @@ import { tokens } from '../design/tokens';
 import { db, queueForSync } from '../utils/db';
 import toast from 'react-hot-toast';
 
-const API_URL = `http://${window.location.hostname}:5000`;
+const API_URL = `http://${window.location.hostname}:5050`;
 
 const MOCK_PRODUCTS = [
   { id: 'P001', name: 'Basmati Rice 5kg',      sku: 'RICE-BAS-5K', barcode: '8901234567890', price: 425, tax: 5,  stock: 142, category: 'Grocery' },

@@ -4,7 +4,7 @@ import { tokens as T } from '../design/tokens';
 import Icon from '../components/Icon';
 import toast from 'react-hot-toast';
 
-const API_URL = `http://${window.location.hostname}:5000`;
+const API_URL = `http://${window.location.hostname}:5050`;
 
 export default function Login() {
   const [email,    setEmail]    = useState('');
