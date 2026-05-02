@@ -18,7 +18,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetch(`${API_URL}/api/reports/dashboard`, {
+    fetch(`/api/reports/dashboard`, {
       headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
     })
       .then(r => r.json())
