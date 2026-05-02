@@ -160,9 +160,7 @@ export default function Layout({ children }) {
   );
 
   return (
-    <>
-      <OrbxGlobalStyles />
-      <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', fontFamily: tokens.font.sans }}>
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', fontFamily: tokens.font.sans }}>
 
         {/* ─── Desktop Sidebar ─── */}
         <aside
@@ -272,8 +270,7 @@ export default function Layout({ children }) {
           <main style={{ flex: 1, overflowY: 'auto' }}>
             {children}
           </main>
-        </div>
       </div>
-    </>
+    </div>
   );
 }
