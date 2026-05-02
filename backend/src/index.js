@@ -3,9 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
 const bodyParser = require('body-parser');
-const { Pool } = require('pg');
-
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const pool = require('./utils/db');
 
 const initDB = async () => {
     const schema = `
