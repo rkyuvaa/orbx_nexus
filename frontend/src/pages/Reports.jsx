@@ -4,56 +4,59 @@ import { tokens as T } from '../design/tokens';
 
 const API_URL = '/api';
 
-const WEEK_DATA = [
-  { day: 'Mon', sales: 38200, orders: 92 },  { day: 'Tue', sales: 42100, orders: 108 },
-  { day: 'Wed', sales: 35800, orders: 89 },  { day: 'Thu', sales: 51200, orders: 131 },
-  { day: 'Fri', sales: 48600, orders: 122 }, { day: 'Sat', sales: 62400, orders: 158 },
-  { day: 'Sun', sales: 48240, orders: 127 },
-];
-const MAX_SALES = Math.max(...WEEK_DATA.map(d => d.sales));
-
 export default function Reports() {
   const [period, setPeriod] = useState('This Week');
   const [data,   setData]   = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`${API_URL}/api/reports/dashboard`, {
+    fetch(`${API_URL}/reports/dashboard`, {
       headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-    }).then(r => r.ok ? r.json() : null).then(setData).catch(() => {});
+    })
+    .then(r => r.ok ? r.json() : null)
+    .then(d => {
+        setData(d);
+        setLoading(false);
+    })
+    .catch(() => setLoading(false));
   }, []);
 
+  const stats = data?.stats || {};
+  
   const kpis = [
-    { label: 'Total Revenue',  value: '₹3,26,540', sub: 'This week',           color: T.colors.brand },
-    { label: 'Gross Profit',   value: '₹82,150',   sub: 'Margin: 25.2%',       color: T.colors.success },
-    { label: 'Total Orders',   value: '827',        sub: 'Avg ₹395 / order',    color: T.colors.info },
-    { label: 'Items Sold',     value: '6,248',      sub: 'Across 12 categories',color: T.colors.accent },
+    { label: 'Today Revenue',  value: `₹${(stats.todaySales || 0).toLocaleString()}`, sub: 'Today',           color: T.colors.brand },
+    { label: 'Transactions',   value: stats.transactions || 0,   sub: 'Daily count',       color: T.colors.success },
+    { label: 'Low Stock',      value: stats.lowStock || 0,        sub: 'Needs attention',    color: T.colors.danger },
+    { label: 'Active Transfers', value: stats.activeTransfers || 0,      sub: 'In transit',color: T.colors.info },
   ];
 
+  // Dummy split data since backend doesn't provide detailed analytics yet
   const payModes = [
-    { mode: 'UPI',  pct: 45, amt: '₹1,46,940', color: T.colors.accent },
-    { mode: 'Cash', pct: 30, amt: '₹97,960',   color: T.colors.info },
-    { mode: 'Card', pct: 25, amt: '₹81,640',   color: T.colors.success },
+    { mode: 'UPI',  pct: 45, amt: '₹0', color: T.colors.accent },
+    { mode: 'Cash', pct: 30, amt: '₹0',   color: T.colors.info },
+    { mode: 'Card', pct: 25, amt: '₹0',   color: T.colors.success },
   ];
 
-  const categories = [
-    { cat: 'Grocery',       rev: '₹1,24,200', pct: 76 },
-    { cat: 'Personal Care', rev: '₹64,400',   pct: 55 },
-    { cat: 'Beverage',      rev: '₹48,200',   pct: 42 },
-    { cat: 'Household',     rev: '₹36,800',   pct: 34 },
-    { cat: 'Snacks',        rev: '₹28,400',   pct: 25 },
-  ];
+  if (loading) return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: 16 }}>
+      <div className="orbx-spin" style={{ width: 40, height: 40, border: `3px solid ${T.colors.border}`, borderTopColor: T.colors.accent, borderRadius: '50%' }} />
+      <p style={{ fontSize: 13, color: T.colors.textMuted, fontWeight: 500 }}>Loading Reports...</p>
+    </div>
+  );
 
   return (
     <div className="orbx-page-enter" style={{ padding: 24 }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <h2 style={{ fontSize: 16, fontWeight: 700 }}>Reports & Analytics</h2>
+        <div>
+           <h2 style={{ fontSize: 16, fontWeight: 700 }}>Reports & Analytics</h2>
+           <p style={{ fontSize: 12, color: T.colors.textMuted }}>{data?.stats?.todaySales ? 'Live data from your branch' : 'Historical performance insights'}</p>
+        </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <select className="orbx-input orbx-select" style={{ width: 'auto', padding: '7px 32px 7px 12px' }} value={period} onChange={e => setPeriod(e.target.value)}>
             {['This Week', 'This Month', 'Last Month', 'Last 90 Days'].map(p => <option key={p}>{p}</option>)}
           </select>
           <button className="orbx-btn orbx-btn-secondary"><Icon name="download" size={14} /> Export</button>
-          <button className="orbx-btn orbx-btn-secondary"><Icon name="print" size={14} /> Print</button>
         </div>
       </div>
 
@@ -68,65 +71,67 @@ export default function Reports() {
         ))}
       </div>
 
-      {/* Daily Chart */}
-      <div className="orbx-card" style={{ marginBottom: 16 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <div style={{ fontSize: 15, fontWeight: 700 }}>Daily Sales Performance</div>
-          <div style={{ fontSize: 12, color: T.colors.textMuted }}>Total: ₹3,26,540 this week</div>
+      {/* Recent Sales List */}
+      <div className="orbx-card" style={{ padding: 0, overflow: 'hidden', marginBottom: 16 }}>
+        <div style={{ padding: '16px 20px', borderBottom: `1px solid ${T.colors.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h3 style={{ fontSize: 15, fontWeight: 700 }}>Recent Transaction Details</h3>
+          <span style={{ fontSize: 11, color: T.colors.textMuted }}>LAST 5 SALES</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16, height: 160 }}>
-          {WEEK_DATA.map((d, i) => (
-            <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: T.colors.textMid }}>₹{(d.sales / 1000).toFixed(0)}k</div>
-              <div style={{ width: '100%', position: 'relative', height: 110, display: 'flex', alignItems: 'flex-end' }}>
-                <div
-                  style={{ width: '100%', height: `${(d.sales / MAX_SALES) * 100}%`, background: i === 5 ? T.colors.accent : `${T.colors.accent}50`, borderRadius: '4px 4px 0 0', transition: 'height 0.6s ease' }}
-                  title={`${d.day}: ₹${d.sales.toLocaleString()} · ${d.orders} orders`}
-                />
-              </div>
-              <div style={{ fontSize: 11, color: T.colors.textMuted, fontWeight: 600 }}>{d.day}</div>
-            </div>
-          ))}
-        </div>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr style={{ background: T.colors.bgMuted }}>
+              {['Bill #', 'Branch', 'User', 'Mode', 'Amount', 'Time'].map(h => (
+                <th key={h} style={{ padding: '12px 20px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: T.colors.textMuted, textTransform: 'uppercase' }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {(data?.recentSales || []).map((s, i) => (
+              <tr key={i} className="orbx-table-row">
+                <td style={{ padding: '14px 20px', fontSize: 13, fontWeight: 700 }}>{s.bill_number}</td>
+                <td style={{ padding: '14px 20px', fontSize: 13 }}>{s.branch_name}</td>
+                <td style={{ padding: '14px 20px', fontSize: 13 }}>{s.user_name}</td>
+                <td style={{ padding: '14px 20px' }}>
+                   <span className={`orbx-badge ${s.payment_method === 'Cash' ? 'orbx-badge-brand' : 'orbx-badge-info'}`}>{s.payment_method}</span>
+                </td>
+                <td style={{ padding: '14px 20px', fontSize: 13, fontWeight: 700 }}>₹{parseFloat(s.total_amount).toLocaleString()}</td>
+                <td style={{ padding: '14px 20px', fontSize: 12, color: T.colors.textMuted }}>{new Date(s.created_at).toLocaleTimeString()}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
-      {/* Payment Mode + Category */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-        <div className="orbx-card">
-          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 16 }}>Payment Mode Split</div>
-          {payModes.map((pm, i) => (
-            <div key={i} style={{ marginBottom: 16 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div style={{ width: 10, height: 10, borderRadius: '50%', background: pm.color }} />
-                  <span style={{ fontSize: 13, fontWeight: 500 }}>{pm.mode}</span>
-                </div>
-                <div style={{ display: 'flex', gap: 12 }}>
-                  <span style={{ fontSize: 13, color: T.colors.textMuted }}>{pm.amt}</span>
-                  <span style={{ fontSize: 13, fontWeight: 700 }}>{pm.pct}%</span>
-                </div>
-              </div>
-              <div style={{ height: 7, background: T.colors.bgMuted, borderRadius: 99 }}>
-                <div style={{ height: '100%', width: `${pm.pct}%`, background: pm.color, borderRadius: 99, transition: 'width 0.6s' }} />
-              </div>
-            </div>
-          ))}
-        </div>
+         <div className="orbx-card">
+           <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 16 }}>Inventory Critical List</div>
+           {(data?.inventoryHighlights || []).map((p, i) => (
+             <div key={i} style={{ marginBottom: 14 }}>
+               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
+                 <span style={{ fontSize: 13, fontWeight: 500 }}>{p.name} ({p.branch_name})</span>
+                 <span style={{ fontSize: 13, fontWeight: 700, color: T.colors.danger }}>{p.quantity} Units</span>
+               </div>
+               <div style={{ height: 6, background: T.colors.bgMuted, borderRadius: 99 }}>
+                 <div style={{ height: '100%', width: '15%', background: T.colors.danger, borderRadius: 99 }} />
+               </div>
+             </div>
+           ))}
+         </div>
 
-        <div className="orbx-card">
-          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 16 }}>Category Revenue</div>
-          {categories.map((c, i) => (
-            <div key={i} style={{ marginBottom: 14 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-                <span style={{ fontSize: 13, fontWeight: 500 }}>{c.cat}</span>
-                <span style={{ fontSize: 13, fontWeight: 700 }}>{c.rev}</span>
-              </div>
-              <div style={{ height: 7, background: T.colors.bgMuted, borderRadius: 99 }}>
-                <div style={{ height: '100%', width: `${c.pct}%`, background: `hsl(${210 + i * 28}, 70%, 55%)`, borderRadius: 99, transition: 'width 0.6s' }} />
-              </div>
-            </div>
-          ))}
-        </div>
+         <div className="orbx-card">
+           <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 16 }}>Payment Distribution (Estimated)</div>
+           {payModes.map((pm, i) => (
+             <div key={i} style={{ marginBottom: 16 }}>
+               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                 <span style={{ fontSize: 13, fontWeight: 500 }}>{pm.mode}</span>
+                 <span style={{ fontSize: 13, fontWeight: 700 }}>{pm.pct}%</span>
+               </div>
+               <div style={{ height: 7, background: T.colors.bgMuted, borderRadius: 99 }}>
+                 <div style={{ height: '100%', width: `${pm.pct}%`, background: pm.color, borderRadius: 99 }} />
+               </div>
+             </div>
+           ))}
+         </div>
       </div>
     </div>
   );
