@@ -28,8 +28,8 @@ router.post('/', requireAdmin, async (req, res) => {
     const { name, location, is_warehouse } = req.body;
     try {
         const result = await pool.query(
-            'INSERT INTO branches (name, location, is_warehouse) VALUES ($1,$2,$3) RETURNING *',
-            [name, location || null, is_warehouse || false]
+            'INSERT INTO branches (name, location, is_warehouse, is_active) VALUES ($1,$2,$3,$4) RETURNING *',
+            [name, location || null, is_warehouse || false, true]
         );
         res.status(201).json(result.rows[0]);
     } catch (err) {
