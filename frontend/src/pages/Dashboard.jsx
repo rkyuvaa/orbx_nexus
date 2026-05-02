@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Icon from '../components/Icon';
 import { tokens } from '../design/tokens';
 
-const API_URL = `http://${window.location.hostname}:5050`;
+const API_URL = '/api';
 
 const RECENT_ORDERS = [
   { id: 'INV-2026-0892', customer: 'Rajesh Kumar',  amount: 1245, items: 6, time: '10:32 AM', payMode: 'UPI' },

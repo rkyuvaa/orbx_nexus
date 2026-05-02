@@ -12,7 +12,7 @@ export default function Setup() {
   const runSetup = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`http://${window.location.hostname}:5050/api/auth/setup`, {
+      const response = await fetch('/api/auth/setup', {
         method: 'POST',
       });
       const data = await response.json();
