@@ -16,6 +16,14 @@ const generateToken = (payload) => {
     return jwt.sign(payload, JWT_SECRET, { expiresIn: '24h' });
 };
 
+const verifyToken = (token) => {
+    try {
+        return jwt.verify(token, JWT_SECRET);
+    } catch (error) {
+        return null;
+    }
+};
+
 const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
@@ -31,10 +39,26 @@ const authenticateToken = (req, res, next) => {
     }
 };
 
+const requireAdmin = (req, res, next) => {
+    if (!req.user.is_superadmin) {
+        return res.status(403).json({ error: 'Superadmin access required.' });
+    }
+    next();
+};
+
+const requireWarehouse = (req, res, next) => {
+    if (!req.user.is_superadmin && !req.user.is_warehouse) {
+        return res.status(403).json({ error: 'Warehouse/Head Office access required for this operation.' });
+    }
+    next();
+};
+
 module.exports = {
     hashPassword,
     verifyPassword,
     generateToken,
     verifyToken,
-    authenticateToken
+    authenticateToken,
+    requireAdmin,
+    requireWarehouse
 };

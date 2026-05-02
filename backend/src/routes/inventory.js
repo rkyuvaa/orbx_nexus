@@ -1,23 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const { Pool } = require('pg');
-const { verifyToken } = require('../utils/auth');
+const pool = require('../utils/db');
+const { authenticateToken, requireWarehouse } = require('../utils/auth');
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL
-});
-
-// Middleware to verify admin/manager access
-async function requireAuth(req, res, next) {
-    const token = (req.headers.authorization || '').split(' ')[1];
-    const decoded = verifyToken(token);
-    if (!decoded) return res.status(401).json({ error: 'Unauthorized' });
-    req.user = decoded;
-    next();
-}
-
-// GET inventory for a specific branch or all
-router.get('/', requireAuth, async (req, res) => {
+// GET inventory for a specific branch or all (Read access for all authenticated users)
+router.get('/', authenticateToken, async (req, res) => {
     try {
         const { branch_id } = req.query;
         let query = `
@@ -40,8 +27,8 @@ router.get('/', requireAuth, async (req, res) => {
     }
 });
 
-// POST adjustment (Manually update stock)
-router.post('/adjust', requireAuth, async (req, res) => {
+// POST adjustment (Manually update stock) - Warehouse Only
+router.post('/adjust', authenticateToken, requireWarehouse, async (req, res) => {
     const { product_id, branch_id, adjustment_qty, reason } = req.body;
     const client = await pool.connect();
     try {
@@ -49,8 +36,8 @@ router.post('/adjust', requireAuth, async (req, res) => {
         
         // Update or Insert inventory
         const result = await client.query(`
-            INSERT INTO inventory (product_id, branch_id, quantity, last_updated)
-            VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+            INSERT INTO inventory (product_id, branch_id, quantity)
+            VALUES ($1, $2, $3)
             ON CONFLICT (product_id, branch_id)
             DO UPDATE SET 
                 quantity = inventory.quantity + $3,
@@ -58,8 +45,6 @@ router.post('/adjust', requireAuth, async (req, res) => {
             RETURNING *
         `, [product_id, branch_id, adjustment_qty]);
 
-        // Log the adjustment (Optional: we can create an inventory_logs table later)
-        
         await client.query('COMMIT');
         res.json(result.rows[0]);
     } catch (err) {

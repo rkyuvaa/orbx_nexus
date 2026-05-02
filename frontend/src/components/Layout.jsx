@@ -70,10 +70,18 @@ export default function Layout({ children }) {
     document.documentElement.setAttribute('data-theme', next ? 'dark' : 'light');
   };
 
-  // Filter nav by permission
+  // Filter nav by permission and warehouse role
+  const isWarehouse = isAdmin || user.is_warehouse;
+  
   const filteredNav = NAV_ITEMS.filter(item => {
-    if (isAdmin || !item.module) return true;
-    return !!allowedModules[item.module];
+    // Basic module permission check
+    if (!isAdmin && item.module && !allowedModules[item.module]) return false;
+    
+    // Strict Warehouse-only modules
+    const warehouseOnly = ['purchases']; 
+    if (item.module === 'purchases' && !isWarehouse) return false;
+
+    return true;
   });
 
   const currentPath  = location.pathname;

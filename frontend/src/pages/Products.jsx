@@ -17,6 +17,8 @@ export default function Products() {
   const [showAdd,  setShowAdd]  = useState(false);
   const [form,     setForm]     = useState(EMPTY_FORM);
   const [saving,   setSaving]   = useState(false);
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const isWarehouse = user.is_superadmin || user.is_warehouse;
 
   const load = () => {
     setLoading(true);
@@ -61,9 +63,11 @@ export default function Products() {
           <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 2 }}>Product Master</h2>
           <p style={{ fontSize: 12, color: T.colors.textMuted }}>{products.length} products across {CATEGORIES.length - 1} categories</p>
         </div>
-        <button className="orbx-btn orbx-btn-primary" onClick={() => setShowAdd(true)}>
-          <Icon name="plus" size={14} /> Add Product
-        </button>
+        {isWarehouse && (
+          <button className="orbx-btn orbx-btn-primary" onClick={() => setShowAdd(true)}>
+            <Icon name="plus" size={14} /> Add Product
+          </button>
+        )}
       </div>
 
       {/* Filters */}
@@ -120,10 +124,12 @@ export default function Products() {
                     <span className={`orbx-badge ${stockBadge(p.stock || 0)}`}>{stockLabel(p.stock || 0)}</span>
                   </td>
                   <td style={{ padding: '12px 16px' }}>
-                    <div style={{ display: 'flex', gap: 6 }}>
-                      <button className="orbx-btn orbx-btn-secondary" style={{ padding: '4px 10px', fontSize: 11 }}>Edit</button>
-                      <button className="orbx-btn orbx-btn-danger" style={{ padding: '4px 10px', fontSize: 11 }}>Delete</button>
-                    </div>
+                    {isWarehouse && (
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button className="orbx-btn orbx-btn-secondary" style={{ padding: '4px 10px', fontSize: 11 }}>Edit</button>
+                        <button className="orbx-btn orbx-btn-danger" style={{ padding: '4px 10px', fontSize: 11 }}>Delete</button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}

@@ -18,6 +18,8 @@ const MOCK = [
 export default function Inventory() {
   const [items,   setItems]   = useState(MOCK);
   const [loading, setLoading] = useState(false);
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const isWarehouse = user.is_superadmin || user.is_warehouse;
 
   useEffect(() => {
     fetch(`${API_URL}/api/inventory`, {
@@ -50,7 +52,9 @@ export default function Inventory() {
         <h2 style={{ fontSize: 16, fontWeight: 700 }}>Inventory Management</h2>
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="orbx-btn orbx-btn-secondary"><Icon name="filter" size={14} /> Filter</button>
-          <button className="orbx-btn orbx-btn-primary"><Icon name="plus" size={14} /> Stock Adjustment</button>
+          {isWarehouse && (
+            <button className="orbx-btn orbx-btn-primary"><Icon name="plus" size={14} /> Stock Adjustment</button>
+          )}
         </div>
       </div>
 
@@ -113,7 +117,7 @@ export default function Inventory() {
                   <td style={{ padding: '13px 16px' }}><span className={`orbx-badge ${badgeClass(s)}`}>{badgeLabel(s)}</span></td>
                   <td style={{ padding: '13px 16px' }}>
                     <div style={{ display: 'flex', gap: 6 }}>
-                      <button className="orbx-btn orbx-btn-secondary" style={{ padding: '4px 10px', fontSize: 11 }}>Adjust</button>
+                      {isWarehouse && <button className="orbx-btn orbx-btn-secondary" style={{ padding: '4px 10px', fontSize: 11 }}>Adjust</button>}
                       <button className="orbx-btn" style={{ padding: '4px 10px', fontSize: 11, background: T.colors.infoSoft, color: T.colors.info }}>Order</button>
                     </div>
                   </td>

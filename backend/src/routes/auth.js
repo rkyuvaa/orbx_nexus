@@ -201,9 +201,10 @@ router.post('/login', async (req, res) => {
     const { email, password } = req.body;
     try {
         const result = await pool.query(`
-            SELECT u.*, r.name as role_name 
+            SELECT u.*, r.name as role_name, b.is_warehouse 
             FROM users u 
             LEFT JOIN roles r ON u.role_id = r.id 
+            LEFT JOIN branches b ON u.branch_id = b.id
             WHERE u.email = $1
         `, [email]);
         const user = result.rows[0];
@@ -216,7 +217,13 @@ router.post('/login', async (req, res) => {
             return res.status(403).json({ error: 'Account is deactivated' });
         }
 
-        const token = generateToken({ id: user.id, email: user.email });
+        const token = generateToken({ 
+            id: user.id, 
+            email: user.email, 
+            is_superadmin: !!user.is_superadmin,
+            is_warehouse: !!user.is_warehouse
+        });
+
         res.json({ 
             token, 
             user: { 
@@ -225,6 +232,8 @@ router.post('/login', async (req, res) => {
                 email: user.email,
                 role_name: user.role_name,
                 is_superadmin: !!user.is_superadmin,
+                is_warehouse: !!user.is_warehouse,
+                branch_id: user.branch_id,
                 allowed_modules: user.allowed_modules || {}
             } 
         });

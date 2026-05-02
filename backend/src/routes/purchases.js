@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../utils/db');
-const { authenticateToken } = require('../utils/auth');
+const { authenticateToken, requireWarehouse } = require('../utils/auth');
 const { getNextSequence } = require('../utils/sequence');
 
 // GET /api/purchases
@@ -55,8 +55,8 @@ router.get('/:id', authenticateToken, async (req, res) => {
     }
 });
 
-// POST /api/purchases (Create PO)
-router.post('/', authenticateToken, async (req, res) => {
+// POST /api/purchases (Create PO) - Warehouse Only
+router.post('/', authenticateToken, requireWarehouse, async (req, res) => {
     const { supplier_id, branch_id, items, notes, subtotal, tax_total, total_amount } = req.body;
     const client = await pool.connect();
     try {
@@ -89,8 +89,8 @@ router.post('/', authenticateToken, async (req, res) => {
     }
 });
 
-// PUT /api/purchases/:id/receive (Receive Goods)
-router.put('/:id/receive', authenticateToken, async (req, res) => {
+// PUT /api/purchases/:id/receive (Receive Goods) - Warehouse Only
+router.put('/:id/receive', authenticateToken, requireWarehouse, async (req, res) => {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');

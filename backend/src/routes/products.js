@@ -1,13 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const { Pool } = require('pg');
+const pool = require('../utils/db');
+const { authenticateToken, requireWarehouse } = require('../utils/auth');
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL
-});
-
-// GET all products
-router.get('/', async (req, res) => {
+// GET all products (Available for all authenticated users/branches)
+router.get('/', authenticateToken, async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM products ORDER BY name ASC');
     res.json(result.rows);
@@ -16,8 +13,8 @@ router.get('/', async (req, res) => {
   }
 });
 
-// POST new product
-router.post('/', async (req, res) => {
+// POST new product (Warehouse/Admin only)
+router.post('/', authenticateToken, requireWarehouse, async (req, res) => {
   const { sku, barcode, name, category, price, tax_percent, min_stock_level } = req.body;
   try {
     const result = await pool.query(
@@ -30,8 +27,8 @@ router.post('/', async (req, res) => {
   }
 });
 
-// PUT update product
-router.put('/:id', async (req, res) => {
+// PUT update product (Warehouse/Admin only)
+router.put('/:id', authenticateToken, requireWarehouse, async (req, res) => {
   const { id } = req.params;
   const { sku, barcode, name, category, price, tax_percent, min_stock_level } = req.body;
   try {
