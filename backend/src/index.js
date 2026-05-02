@@ -160,6 +160,45 @@ const initDB = async () => {
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
 
+        CREATE TABLE IF NOT EXISTS suppliers (
+            id SERIAL PRIMARY KEY,
+            name VARCHAR(100) NOT NULL,
+            contact_person VARCHAR(100),
+            email VARCHAR(100),
+            phone VARCHAR(20),
+            address TEXT,
+            gstin VARCHAR(20),
+            is_active BOOLEAN DEFAULT TRUE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS purchases (
+            id SERIAL PRIMARY KEY,
+            po_number VARCHAR(50) UNIQUE NOT NULL,
+            supplier_id INTEGER REFERENCES suppliers(id),
+            branch_id INTEGER REFERENCES branches(id),
+            status VARCHAR(20) DEFAULT 'pending', -- pending, received, cancelled
+            subtotal DECIMAL(12, 2) DEFAULT 0,
+            tax_total DECIMAL(12, 2) DEFAULT 0,
+            total_amount DECIMAL(12, 2) DEFAULT 0,
+            notes TEXT,
+            created_by INTEGER REFERENCES users(id),
+            received_at TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS purchase_items (
+            id SERIAL PRIMARY KEY,
+            purchase_id INTEGER REFERENCES purchases(id) ON DELETE CASCADE,
+            product_id INTEGER NOT NULL,
+            qty INTEGER NOT NULL,
+            cost_price DECIMAL(12, 2) NOT NULL,
+            tax_percent DECIMAL(5, 2) DEFAULT 0,
+            total DECIMAL(12, 2) NOT NULL
+        );
+
+        INSERT INTO studio_sequences (module, prefix, padding) VALUES ('purchases', 'PO-2026-', 4) ON CONFLICT DO NOTHING;
+
         INSERT INTO roles (name) VALUES ('Admin') ON CONFLICT DO NOTHING;
         INSERT INTO roles (name) VALUES ('Warehouse') ON CONFLICT DO NOTHING;
         INSERT INTO roles (name) VALUES ('Branch User') ON CONFLICT DO NOTHING;
@@ -212,6 +251,8 @@ const salespersonsRoutes = require('./routes/salespersons');
 const customersRoutes = require('./routes/customers');
 const reportsRoutes = require('./routes/reports');
 const studioRoutes = require('./routes/studio');
+const suppliersRoutes = require('./routes/suppliers');
+const purchasesRoutes = require('./routes/purchases');
 
 const app = express();
 const PORT = process.env.PORT || 5050;
@@ -236,6 +277,8 @@ app.use('/api/salespersons', salespersonsRoutes);
 app.use('/api/customers', customersRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/studio', studioRoutes);
+app.use('/api/suppliers', suppliersRoutes);
+app.use('/api/purchases', purchasesRoutes);
 
 app.get('/', (req, res) => {
     res.send('Orbx Retail ERP API is running...');

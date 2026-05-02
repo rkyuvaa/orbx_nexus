@@ -12,6 +12,8 @@ const NAV_ITEMS = [
   { path: '/transfers', label: 'Transfers',    icon: 'transfers', module: 'transfers' },
   { path: '/customers', label: 'Customers',    icon: 'customers', module: 'crm' },
   { path: '/reports',   label: 'Reports',      icon: 'reports',   module: 'reports' },
+  { path: '/purchases', label: 'Purchases',    icon: 'cart',      module: 'purchases' },
+  { path: '/suppliers', label: 'Suppliers',    icon: 'supplier',  module: 'purchases' },
   { path: '/settings',  label: 'Settings',     icon: 'settings',  module: 'settings' },
 ];
 
@@ -23,6 +25,8 @@ const PAGE_SUBTITLES = {
   '/transfers': 'Inter-branch stock movement & dispatch',
   '/customers': 'Customer records, credit & loyalty accounts',
   '/reports':   'Sales analytics & performance insights',
+  '/purchases': 'Purchase orders & stock procurement',
+  '/suppliers': 'Manage vendors & supply chain contacts',
   '/settings':  'Configure branch, sync & invoice settings',
 };
 
