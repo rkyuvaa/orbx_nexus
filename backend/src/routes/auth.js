@@ -114,6 +114,7 @@ router.post('/setup', async (req, res) => {
         // Step 1b: Patch missing columns on existing tables (safe migrations)
         await client.query(`
             ALTER TABLE roles ADD COLUMN IF NOT EXISTS permissions JSONB DEFAULT '{}';
+            ALTER TABLE roles ADD COLUMN IF NOT EXISTS role_type VARCHAR(20) DEFAULT 'Branch';
             ALTER TABLE branches ADD COLUMN IF NOT EXISTS is_warehouse BOOLEAN DEFAULT FALSE;
             DO $$ 
             BEGIN 
