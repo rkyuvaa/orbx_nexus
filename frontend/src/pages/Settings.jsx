@@ -154,7 +154,7 @@ export default function Settings() {
   };
 
   const togglePermission = (groupKey, permId) => {
-    const current = editingRole.permissions[groupKey] || [];
+    const current = Array.isArray(editingRole.permissions[groupKey]) ? editingRole.permissions[groupKey] : [];
     const updated = current.includes(permId) 
       ? current.filter(id => id !== permId)
       : [...current, permId];
@@ -217,7 +217,8 @@ export default function Settings() {
                 <div style={{ display: 'grid', gap: 10 }}>
                   {group.perms.map(p => {
                     const isDisabled = editingRole.role_type === 'Branch' && p.warehouseOnly;
-                    const isChecked = editingRole.permissions[group.key]?.includes(p.id);
+                    const groupPerms = editingRole.permissions[group.key];
+                    const isChecked = Array.isArray(groupPerms) && groupPerms.includes(p.id);
                     return (
                       <label 
                         key={p.id} 
