@@ -244,11 +244,17 @@ export default function Products() {
               ) : filteredCats.map(c => (
                 <tr key={c.id} className="orbx-table-row">
                   <td style={{ padding: '16px 20px', fontSize: 14, fontWeight: 600 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        {c.name}
-                        {c.level < 5 && (
-                             <button className="orbx-btn orbx-btn-ghost" style={{ padding: '2px 8px', fontSize: 10, background: T.colors.bgMuted }} onClick={() => setCategoryPath([...categoryPath, { id: c.id, name: c.name }])}>
-                                View {levelNames[c.level]}s
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <Icon name="inventory" size={16} color={T.colors.textMuted} />
+                        <span style={{ color: T.colors.text }}>{c.name}</span>
+                        {(c.level || 1) < 5 && (
+                             <button 
+                                className="orbx-btn orbx-btn-secondary" 
+                                style={{ padding: '4px 10px', fontSize: 10, height: 'auto', background: T.colors.bgMuted }} 
+                                onClick={() => setCategoryPath([...categoryPath, { id: c.id, name: c.name }])}
+                            >
+                                <Icon name="plus" size={10} style={{ marginRight: 4, transform: 'rotate(90deg)' }} />
+                                Open {levelNames[c.level || 1]}s
                             </button>
                         )}
                       </div>
