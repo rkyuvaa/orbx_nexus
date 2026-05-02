@@ -107,7 +107,8 @@ export default function Settings() {
   const [users,     setUsers]     = useState([]);
   const [roles,     setRoles]     = useState([]);
   const [loading,   setLoading]   = useState(true);
-  const [showModal, setShowModal] = useState(null); // 'branch', 'user', 'role'
+  const [showModal, setShowModal] = useState(null); // 'branch', 'user'
+  const [editingItem, setEditingItem] = useState(null);
   const [editingRole, setEditingRole] = useState(null);
 
   const API_URL = '/api';
@@ -134,6 +135,50 @@ export default function Settings() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSaveBranch = async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const data = Object.fromEntries(formData);
+    const isEdit = !!editingItem?.id;
+    try {
+      const res = await fetch(`${API_URL}/branches${isEdit ? '/' + editingItem.id : ''}`, {
+        method: isEdit ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ ...data, is_warehouse: data.is_warehouse === 'on' })
+      });
+      if (res.ok) {
+        toast.success(`Branch ${isEdit ? 'updated' : 'created'} successfully`);
+        setShowModal(null);
+        setEditingItem(null);
+        fetchData();
+      }
+    } catch (err) { toast.error('Error saving branch'); }
+  };
+
+  const handleSaveUser = async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const data = Object.fromEntries(formData);
+    const isEdit = !!editingItem?.id;
+    
+    try {
+      const res = await fetch(`${API_URL}/users${isEdit ? '/' + editingItem.id : ''}`, {
+        method: isEdit ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(data)
+      });
+      if (res.ok) {
+        toast.success(`User ${isEdit ? 'updated' : 'created'} successfully`);
+        setShowModal(null);
+        setEditingItem(null);
+        fetchData();
+      } else {
+        const err = await res.json();
+        toast.error(err.error || 'Error saving user');
+      }
+    } catch (err) { toast.error('Error saving user'); }
   };
 
   const handleSaveRole = async (e) => {
@@ -280,8 +325,6 @@ export default function Settings() {
     </div>
   );
 
-  // ... (Keep other renderers: renderBranches, renderUsers, renderSync, renderInvoice)
-  
   const renderBranches = () => (
     <div className="orbx-page-enter">
       <SectionHeader 
@@ -316,7 +359,7 @@ export default function Settings() {
                   </span>
                 </td>
                 <td style={{ padding: '16px 20px', textAlign: 'right' }}>
-                  <button className="orbx-btn orbx-btn-ghost" style={{ padding: 6 }}><Icon name="edit" size={14} /></button>
+                  <button className="orbx-btn orbx-btn-ghost" onClick={() => { setEditingItem(b); setShowModal('branch'); }} style={{ padding: 6 }}><Icon name="edit" size={14} /></button>
                 </td>
               </tr>
             ))}
@@ -331,7 +374,7 @@ export default function Settings() {
       <SectionHeader 
         title="User Accounts" 
         subtitle="Manage staff access, roles and branch assignments" 
-        action={<button className="orbx-btn orbx-btn-primary" onClick={() => setShowModal('user')}>+ Add Staff</button>}
+        action={<button className="orbx-btn orbx-btn-primary" onClick={() => { setEditingItem(null); setShowModal('user'); }}>+ Add Staff</button>}
       />
       <div className="orbx-card" style={{ padding: 0, overflow: 'hidden' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -354,9 +397,14 @@ export default function Settings() {
                 </td>
                 <td style={{ padding: '16px 20px', fontSize: 13, color: T.colors.textMid }}>{u.branch_name || 'Global'}</td>
                 <td style={{ padding: '16px 20px', textAlign: 'right' }}>
-                   <span className={`orbx-badge ${u.is_active ? 'orbx-badge-success' : 'orbx-badge-danger'}`}>
-                    {u.is_active ? 'Active' : 'Locked'}
-                  </span>
+                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'flex-end' }}>
+                     <span className={`orbx-badge ${u.is_active ? 'orbx-badge-success' : 'orbx-badge-danger'}`}>
+                      {u.is_active ? 'Active' : 'Locked'}
+                    </span>
+                    <button className="orbx-btn orbx-btn-ghost" onClick={() => { setEditingItem(u); setShowModal('user'); }} style={{ padding: 6 }}>
+                      <Icon name="edit" size={14} />
+                    </button>
+                   </div>
                 </td>
               </tr>
             ))}
@@ -437,8 +485,78 @@ export default function Settings() {
         </>
       )}
 
-      {/* Modals for Branch/User - Keep existing logic but I've integrated Role editing inline above */}
-      {/* ... (Existing Branch/User Modals) */}
+      {/* Modals */}
+      {showModal === 'branch' && (
+        <div className="orbx-modal-overlay">
+          <div className="orbx-modal" style={{ maxWidth: 450, padding: 32 }}>
+            <h3 style={{ fontSize: 20, fontWeight: 800, marginBottom: 24 }}>{editingItem ? 'Edit Branch' : 'New Branch'}</h3>
+            <form onSubmit={handleSaveBranch} style={{ display: 'grid', gap: 20 }}>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 700, color: T.colors.textMid, marginBottom: 8, display: 'block' }}>BRANCH NAME</label>
+                <input name="name" className="orbx-input" required defaultValue={editingItem?.name} placeholder="e.g. RS Puram Outlet" />
+              </div>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 700, color: T.colors.textMid, marginBottom: 8, display: 'block' }}>LOCATION / CITY</label>
+                <input name="location" className="orbx-input" defaultValue={editingItem?.location} placeholder="e.g. Coimbatore" />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <input type="checkbox" name="is_warehouse" id="is_warehouse" defaultChecked={editingItem?.is_warehouse} />
+                <label htmlFor="is_warehouse" style={{ fontSize: 13, fontWeight: 600 }}>Mark as Warehouse</label>
+              </div>
+              <div style={{ display: 'flex', gap: 12, marginTop: 12 }}>
+                <button type="submit" className="orbx-btn orbx-btn-primary" style={{ flex: 1 }}>Save Branch</button>
+                <button type="button" className="orbx-btn orbx-btn-secondary" onClick={() => { setShowModal(null); setEditingItem(null); }}>Cancel</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showModal === 'user' && (
+        <div className="orbx-modal-overlay">
+          <div className="orbx-modal" style={{ maxWidth: 450, padding: 32 }}>
+            <h3 style={{ fontSize: 20, fontWeight: 800, marginBottom: 24 }}>{editingItem ? 'Edit Staff Account' : 'New Staff Account'}</h3>
+            <form onSubmit={handleSaveUser} style={{ display: 'grid', gap: 20 }}>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 700, color: T.colors.textMid, marginBottom: 8, display: 'block' }}>FULL NAME</label>
+                <input name="name" className="orbx-input" required defaultValue={editingItem?.name} placeholder="e.g. Rajesh Kumar" />
+              </div>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 700, color: T.colors.textMid, marginBottom: 8, display: 'block' }}>EMAIL ADDRESS</label>
+                <input name="email" type="email" className="orbx-input" required defaultValue={editingItem?.email} placeholder="rajesh@orbx.com" />
+              </div>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 700, color: T.colors.textMid, marginBottom: 8, display: 'block' }}>PASSWORD {editingItem && '(Leave blank to keep current)'}</label>
+                <input name="password" type="password" className="orbx-input" required={!editingItem} placeholder="••••••••" />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: T.colors.textMid, marginBottom: 8, display: 'block' }}>ROLE</label>
+                  <select name="role_id" className="orbx-input orbx-select" required defaultValue={editingItem?.role_id}>
+                    {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: T.colors.textMid, marginBottom: 8, display: 'block' }}>BRANCH</label>
+                  <select name="branch_id" className="orbx-input orbx-select" required defaultValue={editingItem?.branch_id}>
+                    {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                  </select>
+                </div>
+              </div>
+              {editingItem && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <input type="checkbox" name="is_active" id="is_active" defaultChecked={editingItem.is_active} />
+                  <label htmlFor="is_active" style={{ fontSize: 13, fontWeight: 600 }}>Account Active</label>
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: 12, marginTop: 12 }}>
+                <button type="submit" className="orbx-btn orbx-btn-primary" style={{ flex: 1 }}>Save Account</button>
+                <button type="button" className="orbx-btn orbx-btn-secondary" onClick={() => { setShowModal(null); setEditingItem(null); }}>Cancel</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
