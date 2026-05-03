@@ -5,29 +5,31 @@ import toast from 'react-hot-toast';
 
 const API_URL = '/api';
 
-const MOCK = [
-  { id: 'P001', name: 'Basmati Rice 5kg',     category: 'Grocery',       stock: 142, minStock: 50, price: 425, status: 'ok' },
-  { id: 'P002', name: 'Sunflower Oil 1L',      category: 'Grocery',       stock: 87,  minStock: 30, price: 185, status: 'ok' },
-  { id: 'P003', name: 'Tata Tea Premium 500g', category: 'Beverage',      stock: 12,  minStock: 20, price: 265, status: 'low' },
-  { id: 'P004', name: 'Amul Butter 500g',      category: 'Dairy',         stock: 5,   minStock: 15, price: 280, status: 'critical' },
-  { id: 'P012', name: 'Nescafe Classic 200g',  category: 'Beverage',      stock: 8,   minStock: 20, price: 460, status: 'low' },
-  { id: 'P005', name: 'Colgate MaxFresh 150g', category: 'Personal Care', stock: 201, minStock: 40, price: 95,  status: 'ok' },
-  { id: 'P007', name: 'Parle-G 800g',          category: 'Snacks',        stock: 315, minStock: 60, price: 75,  status: 'ok' },
-];
-
 export default function Inventory() {
-  const [items,   setItems]   = useState(MOCK);
-  const [loading, setLoading] = useState(false);
+  const [items,   setItems]   = useState([]);
+  const [loading, setLoading] = useState(true);
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const isWarehouse = user.is_superadmin || user.is_warehouse;
 
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/inventory`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setItems(Array.isArray(data) ? data : []);
+      }
+    } catch (err) {
+      toast.error('Failed to load inventory');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    fetch(`${API_URL}/api/inventory`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-    })
-      .then(r => r.ok ? r.json() : null)
-      .then(d => d?.length && setItems(d))
-      .catch(() => {});
+    fetchData();
   }, []);
 
   const statusOf = (stock, min) => stock < min * 0.3 ? 'critical' : stock < min ? 'low' : 'ok';
@@ -35,12 +37,12 @@ export default function Inventory() {
   const badgeLabel = s => s === 'critical' ? 'Critical' : s === 'low' ? 'Low Stock' : 'In Stock';
   const barColor   = s => s === 'critical' ? T.colors.danger : s === 'low' ? T.colors.warning : T.colors.success;
 
-  const critical = items.filter(i => (i.status || statusOf(i.stock, i.minStock || 20)) === 'critical').length;
-  const low      = items.filter(i => (i.status || statusOf(i.stock, i.minStock || 20)) === 'low').length;
+  const critical = items.filter(i => (i.status || statusOf(i.stock, i.min_stock_level || 20)) === 'critical').length;
+  const low      = items.filter(i => (i.status || statusOf(i.stock, i.min_stock_level || 20)) === 'low').length;
 
   const statCards = [
     { label: 'Total Products', value: items.length, icon: 'products', color: T.colors.info },
-    { label: 'In Stock',       value: items.filter(i => (i.status || statusOf(i.stock, i.minStock || 20)) === 'ok').length, icon: 'check', color: T.colors.success },
+    { label: 'In Stock',       value: items.filter(i => (i.status || statusOf(i.stock, i.min_stock_level || 20)) === 'ok').length, icon: 'check', color: T.colors.success },
     { label: 'Low Stock',      value: low,      icon: 'warning', color: T.colors.warning },
     { label: 'Critical',       value: critical, icon: 'x',       color: T.colors.danger },
   ];
@@ -51,7 +53,7 @@ export default function Inventory() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <h2 style={{ fontSize: 16, fontWeight: 700 }}>Inventory Management</h2>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button className="orbx-btn orbx-btn-secondary"><Icon name="filter" size={14} /> Filter</button>
+          <button className="orbx-btn orbx-btn-secondary" onClick={fetchData}><Icon name="sync" size={14} /> Refresh</button>
           {isWarehouse && (
             <button className="orbx-btn orbx-btn-primary"><Icon name="plus" size={14} /> Stock Adjustment</button>
           )}
@@ -95,16 +97,20 @@ export default function Inventory() {
             </tr>
           </thead>
           <tbody>
-            {items.map(p => {
-              const s = p.status || statusOf(p.stock, p.minStock || 20);
-              const barPct = Math.min(100, (p.stock / (p.minStock || 20)) * 50);
+            {loading ? (
+                <tr><td colSpan={6} style={{ padding: 40, textAlign: 'center', color: T.colors.textMuted }}>Fetching real-time stock data...</td></tr>
+            ) : items.length === 0 ? (
+                <tr><td colSpan={6} style={{ padding: 40, textAlign: 'center', color: T.colors.textMuted }}>No products in inventory. Add products to begin tracking.</td></tr>
+            ) : items.map(p => {
+              const s = p.status || statusOf(p.stock, p.min_stock_level || 20);
+              const barPct = Math.min(100, (p.stock / (p.min_stock_level || 20)) * 50);
               return (
                 <tr key={p.id} className="orbx-table-row">
                   <td style={{ padding: '13px 16px' }}>
                     <div style={{ fontSize: 13.5, fontWeight: 600 }}>{p.name}</div>
-                    <div style={{ fontSize: 11, color: T.colors.textMuted }}>{p.id}</div>
+                    <div style={{ fontSize: 11, color: T.colors.textMuted }}>{p.sku}</div>
                   </td>
-                  <td style={{ padding: '13px 16px' }}><span className="orbx-badge orbx-badge-neutral">{p.category}</span></td>
+                  <td style={{ padding: '13px 16px' }}><span className="orbx-badge orbx-badge-neutral">{p.category_name || 'General'}</span></td>
                   <td style={{ padding: '13px 16px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <div style={{ width: 80, height: 6, background: T.colors.bgMuted, borderRadius: 99 }}>
@@ -113,7 +119,7 @@ export default function Inventory() {
                       <span style={{ fontSize: 14, fontWeight: 700, color: barColor(s) }}>{p.stock}</span>
                     </div>
                   </td>
-                  <td style={{ padding: '13px 16px', fontSize: 13, color: T.colors.textMid }}>{p.minStock || 20}</td>
+                  <td style={{ padding: '13px 16px', fontSize: 13, color: T.colors.textMid }}>{p.min_stock_level || 20}</td>
                   <td style={{ padding: '13px 16px' }}><span className={`orbx-badge ${badgeClass(s)}`}>{badgeLabel(s)}</span></td>
                   <td style={{ padding: '13px 16px' }}>
                     <div style={{ display: 'flex', gap: 6 }}>
