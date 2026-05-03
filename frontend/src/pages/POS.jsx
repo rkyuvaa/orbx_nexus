@@ -149,7 +149,7 @@ export default function POS() {
           </div>
         </div>
 
-        <div className="orbx-pos-summary-box" style={{ padding: '0 40px', gap: 50 }}>
+        <div className="orbx-pos-summary-box" style={{ padding: '0 30px', gap: 30, minWidth: 'fit-content' }}>
           <div style={{ textAlign: 'center' }}>
             <div className="orbx-pos-label" style={{ color: T.colors.textMuted, marginBottom: 8 }}>Total Qty</div>
             <div style={{ fontSize: 30, fontWeight: 800 }}>{totals.qty}</div>
@@ -183,7 +183,7 @@ export default function POS() {
 
       {/* ── Section 2: Item Entry ── */}
       <div className="orbx-pos-section-mid" style={{ height: 100, background: '#f8fafc', padding: '0 30px' }}>
-        <div style={{ position: 'relative', width: 450 }}>
+        <div style={{ position: 'relative', flex: 1, minWidth: 250, maxWidth: 450 }}>
           <Icon name="search" size={20} color={T.colors.textMuted} style={{ position: 'absolute', left: 16, top: 15 }} />
           <input 
             ref={searchRef}
@@ -225,7 +225,7 @@ export default function POS() {
         </div>
 
         {formItem && (
-          <div style={{ display: 'flex', gap: 25, marginLeft: 40, alignItems: 'center', animation: 'orbx-fadeIn 0.2s ease', background: '#fff', padding: '12px 25px', borderRadius: 12, border: `1px solid ${T.colors.accentSoft}`, boxShadow: T.shadows.sm }}>
+          <div style={{ display: 'flex', gap: 15, marginLeft: 20, alignItems: 'center', animation: 'orbx-fadeIn 0.2s ease', background: '#fff', padding: '12px 20px', borderRadius: 12, border: `1px solid ${T.colors.accentSoft}`, boxShadow: T.shadows.sm, flexWrap: 'wrap' }}>
             <div className="orbx-pos-input-group">
               <label className="orbx-pos-label">Product Name</label>
               <div style={{ fontWeight: 800, fontSize: 17, color: T.colors.brand }}>{formItem.name}</div>
@@ -285,8 +285,8 @@ export default function POS() {
       </div>
 
       {/* ── Section 3: Bill Items Table ── */}
-      <div className="orbx-pos-section-bottom" style={{ padding: '10px 30px' }}>
-        <div className="orbx-pos-table-container">
+      <div className="orbx-pos-section-bottom" style={{ padding: '0 30px' }}>
+        <div className="orbx-pos-table-container" style={{ overflowY: 'auto' }}>
           <table className="orbx-pos-table">
             <thead>
               <tr style={{ height: 50 }}>

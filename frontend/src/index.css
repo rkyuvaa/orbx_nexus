@@ -138,7 +138,7 @@ body {
   display: flex;
   flex-direction: column;
   height: calc(100vh - var(--orbx-header-height));
-  width: 100vw;
+  width: 100%;
   overflow: hidden;
 }
 
