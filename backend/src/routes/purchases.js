@@ -7,7 +7,7 @@ const { getNextSequence } = require('../utils/sequence');
 // GET /api/purchases
 router.get('/', authenticateToken, hasPermission('purchases', 'view'), async (req, res) => {
     try {
-        const { branch_id } = req.query;
+        const { branch_id, status } = req.query;
         let query = `
             SELECT p.*, s.name as supplier_name, b.name as branch_name, u.name as created_by_name
             FROM purchases p
@@ -16,10 +16,21 @@ router.get('/', authenticateToken, hasPermission('purchases', 'view'), async (re
             JOIN users u ON p.created_by = u.id
         `;
         const params = [];
+        const conditions = [];
+
         if (branch_id) {
-            query += ` WHERE p.branch_id = $1`;
             params.push(branch_id);
+            conditions.push(`p.branch_id = $${params.length}`);
         }
+        if (status) {
+            params.push(status);
+            conditions.push(`p.status = $${params.length}`);
+        }
+
+        if (conditions.length > 0) {
+            query += ' WHERE ' + conditions.join(' AND ');
+        }
+        
         query += ` ORDER BY p.created_at DESC`;
         
         const result = await pool.query(query, params);
@@ -62,20 +73,21 @@ router.post('/', authenticateToken, hasPermission('purchases', 'create'), async 
     try {
         await client.query('BEGIN');
         
+        // PO Number generation
         const po_number = await getNextSequence('purchases');
         
         const pRes = await client.query(
-            `INSERT INTO purchases (po_number, supplier_id, branch_id, subtotal, tax_total, total_amount, notes, created_by)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
+            `INSERT INTO purchases (po_number, supplier_id, branch_id, subtotal, tax_total, total_amount, notes, created_by, status)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8, 'pending') RETURNING id`,
             [po_number, supplier_id, branch_id, subtotal, tax_total, total_amount, notes, req.user.id]
         );
         const purchase_id = pRes.rows[0].id;
         
         for (const item of items) {
             await client.query(
-                `INSERT INTO purchase_items (purchase_id, product_id, qty, cost_price, tax_percent, total)
-                 VALUES ($1,$2,$3,$4,$5,$6)`,
-                [purchase_id, item.product_id, item.qty, item.cost_price, item.tax_percent, item.total]
+                `INSERT INTO purchase_items (purchase_id, product_id, qty, cost_price, tax_percent, total, attributes)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+                [purchase_id, item.product_id, item.qty, item.cost_price, item.tax_percent, item.total, JSON.stringify(item.attributes || {})]
             );
         }
         
@@ -89,40 +101,17 @@ router.post('/', authenticateToken, hasPermission('purchases', 'create'), async 
     }
 });
 
-// PUT /api/purchases/:id/receive (Receive Goods)
-router.put('/:id/receive', authenticateToken, hasPermission('purchases', 'receive'), async (req, res) => {
-    const client = await pool.connect();
+// CANCEL PO
+router.put('/:id/cancel', authenticateToken, hasPermission('purchases', 'edit'), async (req, res) => {
     try {
-        await client.query('BEGIN');
-        
-        const pRes = await client.query('SELECT * FROM purchases WHERE id = $1 FOR UPDATE', [req.params.id]);
-        if (pRes.rows.length === 0) throw new Error('Purchase order not found');
-        if (pRes.rows[0].status === 'received') throw new Error('Already received');
-        
-        const purchase = pRes.rows[0];
-        const itemsRes = await client.query('SELECT * FROM purchase_items WHERE purchase_id = $1', [req.params.id]);
-        
-        for (const item of itemsRes.rows) {
-            await client.query(`
-                INSERT INTO inventory (product_id, branch_id, quantity)
-                VALUES ($1, $2, $3)
-                ON CONFLICT (product_id, branch_id)
-                DO UPDATE SET quantity = inventory.quantity + $3, last_updated = CURRENT_TIMESTAMP
-            `, [item.product_id, purchase.branch_id, item.qty]);
-        }
-        
-        await client.query(
-            'UPDATE purchases SET status = $1, received_at = CURRENT_TIMESTAMP WHERE id = $2',
-            ['received', req.params.id]
+        const result = await pool.query(
+            "UPDATE purchases SET status = 'cancelled' WHERE id = $1 AND status = 'pending' RETURNING *",
+            [req.params.id]
         );
-        
-        await client.query('COMMIT');
-        res.json({ message: 'Goods received and inventory updated' });
+        if (result.rows.length === 0) return res.status(400).json({ error: 'Cannot cancel. Already received or not found.' });
+        res.json({ message: 'PO Cancelled' });
     } catch (err) {
-        await client.query('ROLLBACK');
         res.status(500).json({ error: err.message });
-    } finally {
-        client.release();
     }
 });
 

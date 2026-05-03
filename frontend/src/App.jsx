@@ -16,6 +16,8 @@ import Settings from './pages/Settings';
 import Studio from './pages/Studio';
 import Purchases from './pages/Purchases';
 import Suppliers from './pages/Suppliers';
+import GRN from './pages/GRN';
+import GRNCreate from './pages/GRNCreate';
 import { startSyncEngine, fetchUpdates } from './utils/db';
 import { tokens } from './design/tokens';
 
@@ -172,6 +174,8 @@ export default function App() {
         <Route path="/studio" element={<PrivateRoute module="studio" title="Studio — Layout & Workflow"><Studio /></PrivateRoute>} />
         <Route path="/purchases" element={<PrivateRoute module="purchases" title="Purchase Orders"><Purchases /></PrivateRoute>} />
         <Route path="/suppliers" element={<PrivateRoute module="purchases" title="Supplier Management"><Suppliers /></PrivateRoute>} />
+        <Route path="/grn" element={<PrivateRoute module="purchases" title="GRN Management"><GRN /></PrivateRoute>} />
+        <Route path="/grn/create" element={<PrivateRoute module="purchases" title="Create Goods Receipt"><GRNCreate /></PrivateRoute>} />
         
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" />} />

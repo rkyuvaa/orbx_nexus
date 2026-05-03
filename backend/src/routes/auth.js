@@ -119,6 +119,73 @@ router.post('/setup', async (req, res) => {
                 name VARCHAR(100) UNIQUE NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
+            CREATE TABLE IF NOT EXISTS suppliers (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(100) NOT NULL,
+                contact_person VARCHAR(100),
+                email VARCHAR(100),
+                phone VARCHAR(20),
+                address TEXT,
+                gstin VARCHAR(20),
+                is_active BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE TABLE IF NOT EXISTS purchases (
+                id SERIAL PRIMARY KEY,
+                po_number VARCHAR(50) UNIQUE NOT NULL,
+                supplier_id INTEGER REFERENCES suppliers(id),
+                branch_id INTEGER REFERENCES branches(id),
+                status VARCHAR(20) DEFAULT 'pending', -- pending, received, cancelled
+                subtotal DECIMAL(12, 2) DEFAULT 0,
+                tax_total DECIMAL(12, 2) DEFAULT 0,
+                total_amount DECIMAL(12, 2) DEFAULT 0,
+                notes TEXT,
+                created_by INTEGER REFERENCES users(id),
+                received_at TIMESTAMP,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE TABLE IF NOT EXISTS purchase_items (
+                id SERIAL PRIMARY KEY,
+                purchase_id INTEGER REFERENCES purchases(id) ON DELETE CASCADE,
+                product_id INTEGER NOT NULL,
+                qty INTEGER NOT NULL,
+                received_qty INTEGER DEFAULT 0,
+                cost_price DECIMAL(12, 2) NOT NULL,
+                tax_percent DECIMAL(5, 2) DEFAULT 0,
+                attributes JSONB DEFAULT '{}',
+                total DECIMAL(12, 2) NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS grns (
+                id SERIAL PRIMARY KEY,
+                purchase_id INTEGER REFERENCES purchases(id),
+                grn_number VARCHAR(50) UNIQUE NOT NULL,
+                status VARCHAR(20) DEFAULT 'pending',
+                barcode_config JSONB DEFAULT '{}',
+                created_by INTEGER REFERENCES users(id),
+                approved_by INTEGER REFERENCES users(id),
+                received_at TIMESTAMP,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE TABLE IF NOT EXISTS grn_items (
+                id SERIAL PRIMARY KEY,
+                grn_id INTEGER REFERENCES grns(id) ON DELETE CASCADE,
+                product_id INTEGER NOT NULL,
+                quantity INTEGER NOT NULL,
+                attributes JSONB DEFAULT '{}',
+                barcodes JSONB DEFAULT '[]'
+            );
+            CREATE TABLE IF NOT EXISTS inventory_logs (
+                id SERIAL PRIMARY KEY,
+                product_id INTEGER NOT NULL,
+                branch_id INTEGER NOT NULL,
+                action_type VARCHAR(50) NOT NULL,
+                qty_change INTEGER NOT NULL,
+                reference_type VARCHAR(50),
+                reference_id INTEGER,
+                created_by INTEGER REFERENCES users(id),
+                approved_by INTEGER REFERENCES users(id),
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
         `);
 
         // Step 1b: Patch missing columns on existing tables (safe migrations)
@@ -138,6 +205,8 @@ router.post('/setup', async (req, res) => {
             ALTER TABLE users ADD COLUMN IF NOT EXISTS is_superadmin BOOLEAN DEFAULT FALSE;
             ALTER TABLE users ADD COLUMN IF NOT EXISTS department_id INTEGER;
             ALTER TABLE products ADD COLUMN IF NOT EXISTS category_id INTEGER REFERENCES categories(id);
+            ALTER TABLE purchase_items ADD COLUMN IF NOT EXISTS attributes JSONB DEFAULT '{}';
+            ALTER TABLE purchase_items ADD COLUMN IF NOT EXISTS received_qty INTEGER DEFAULT 0;
         `);
 
         // Step 2: (Optional) Check count for logging

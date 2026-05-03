@@ -192,12 +192,49 @@ const initDB = async () => {
             purchase_id INTEGER REFERENCES purchases(id) ON DELETE CASCADE,
             product_id INTEGER NOT NULL,
             qty INTEGER NOT NULL,
+            received_qty INTEGER DEFAULT 0,
             cost_price DECIMAL(12, 2) NOT NULL,
             tax_percent DECIMAL(5, 2) DEFAULT 0,
+            attributes JSONB DEFAULT '{}', -- Size, Color, Fabric, Design
             total DECIMAL(12, 2) NOT NULL
         );
 
+        CREATE TABLE IF NOT EXISTS grns (
+            id SERIAL PRIMARY KEY,
+            purchase_id INTEGER REFERENCES purchases(id),
+            grn_number VARCHAR(50) UNIQUE NOT NULL,
+            status VARCHAR(20) DEFAULT 'pending', -- pending, approved, rejected
+            barcode_config JSONB DEFAULT '{}',
+            created_by INTEGER REFERENCES users(id),
+            approved_by INTEGER REFERENCES users(id),
+            received_at TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS grn_items (
+            id SERIAL PRIMARY KEY,
+            grn_id INTEGER REFERENCES grns(id) ON DELETE CASCADE,
+            product_id INTEGER NOT NULL,
+            quantity INTEGER NOT NULL,
+            attributes JSONB DEFAULT '{}',
+            barcodes JSONB DEFAULT '[]'
+        );
+
+        CREATE TABLE IF NOT EXISTS inventory_logs (
+            id SERIAL PRIMARY KEY,
+            product_id INTEGER NOT NULL,
+            branch_id INTEGER NOT NULL,
+            action_type VARCHAR(50) NOT NULL, -- GRN, TRANSFER, SALE, ADJUSTMENT
+            qty_change INTEGER NOT NULL,
+            reference_type VARCHAR(50), -- GRN, SALE, TRANSFER
+            reference_id INTEGER,
+            created_by INTEGER REFERENCES users(id),
+            approved_by INTEGER REFERENCES users(id),
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
         INSERT INTO studio_sequences (module, prefix, padding) VALUES ('purchases', 'PO-2026-', 4) ON CONFLICT DO NOTHING;
+        INSERT INTO studio_sequences (module, prefix, padding) VALUES ('grns', 'GRN-2026-', 4) ON CONFLICT DO NOTHING;
 
         INSERT INTO roles (name) VALUES ('Admin') ON CONFLICT DO NOTHING;
         INSERT INTO roles (name) VALUES ('Warehouse') ON CONFLICT DO NOTHING;
@@ -227,6 +264,14 @@ const initDB = async () => {
             IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='branches' AND column_name='is_active') THEN
                 ALTER TABLE branches ADD COLUMN is_active BOOLEAN DEFAULT TRUE;
             END IF;
+
+            -- Purchase Items Updates
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='purchase_items' AND column_name='attributes') THEN
+                ALTER TABLE purchase_items ADD COLUMN attributes JSONB DEFAULT '{}';
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='purchase_items' AND column_name='received_qty') THEN
+                ALTER TABLE purchase_items ADD COLUMN received_qty INTEGER DEFAULT 0;
+            END IF;
         END $$;
     `;
     try {
@@ -253,6 +298,7 @@ const reportsRoutes = require('./routes/reports');
 const studioRoutes = require('./routes/studio');
 const suppliersRoutes = require('./routes/suppliers');
 const purchasesRoutes = require('./routes/purchases');
+const grnsRoutes = require('./routes/grns');
 const categoriesRoutes = require('./routes/categories');
 
 const app = express();
@@ -280,6 +326,7 @@ app.use('/api/reports', reportsRoutes);
 app.use('/api/studio', studioRoutes);
 app.use('/api/suppliers', suppliersRoutes);
 app.use('/api/purchases', purchasesRoutes);
+app.use('/api/grns', grnsRoutes);
 app.use('/api/categories', categoriesRoutes);
 
 app.get('/', (req, res) => {
