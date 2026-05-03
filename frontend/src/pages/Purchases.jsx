@@ -188,7 +188,7 @@ export default function Purchases() {
                                 <div style={{ position: 'relative' }}>
                                     <input className="orbx-input" placeholder="Search SKU or Name..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
                                     {filteredProducts.length > 0 && (
-                                        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', boxShadow: T.shadow.lg, borderRadius: T.radius.md, zIndex: 10, marginTop: 4, maxHeight: 300, overflowY: 'auto' }}>
+                                        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', boxShadow: T.shadows.lg, borderRadius: T.radius.md, zIndex: 10, marginTop: 4, maxHeight: 300, overflowY: 'auto' }}>
                                             {filteredProducts.map(p => (
                                                 <div key={p.id} className="orbx-list-item" style={{ padding: '12px 16px', cursor: 'pointer' }} onClick={() => addToCart(p)}>
                                                     <div style={{ fontWeight: 600 }}>{p.name}</div>

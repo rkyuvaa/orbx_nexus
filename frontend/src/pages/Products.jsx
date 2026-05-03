@@ -61,6 +61,14 @@ export default function Products() {
     loadData();
   }, []);
 
+  const handleDeleteProduct = async (id) => {
+      if (!window.confirm('Delete this product?')) return;
+      try {
+          const res = await fetch(`${API_URL}/products/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+          if (res.ok) { toast.success('Deleted'); loadData(); }
+      } catch (err) { toast.error('Delete failed'); }
+  }
+
   // ─── PRODUCT ACTIONS ────────────────────────────────────────────────────────
 
   const handleSaveProduct = async () => {
@@ -82,15 +90,33 @@ export default function Products() {
     setSaving(false);
   };
 
-  const handleDeleteProduct = async (id) => {
-      if (!window.confirm('Delete this product?')) return;
-      try {
-          const res = await fetch(`${API_URL}/products/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
-          if (res.ok) { toast.success('Deleted'); loadData(); }
-      } catch (err) { toast.error('Delete failed'); }
-  }
+  const traceParents = (catId) => {
+      let path = [];
+      let currentId = parseInt(catId);
+      while (currentId) {
+          const cat = categories.find(c => c.id === currentId);
+          if (!cat) break;
+          path.unshift(cat);
+          currentId = cat.parent_id;
+      }
+      return path;
+  };
 
-  // ─── CATEGORY ACTIONS ───────────────────────────────────────────────────────
+  const handleEdit = (p) => {
+      const path = traceParents(p.category_id);
+      const levels = ['main_cat', 'cat', 'sub_cat', 'group', 'sub_group'];
+      let catState = {};
+      path.forEach((cat, i) => {
+          if (i < levels.length) catState[levels[i]] = cat.id.toString();
+      });
+
+      setForm({ 
+          ...p, 
+          tax: p.tax_percent || p.tax,
+          ...catState
+      });
+      setShowAdd(true);
+  }
 
   const handleSaveCategory = async (e) => {
     e.preventDefault();
@@ -189,7 +215,7 @@ export default function Products() {
                         <td style={{ padding: '16px 20px', textAlign: 'right' }}>
                             {canEdit && (
                             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                                <button className="orbx-btn orbx-btn-ghost" onClick={() => { setForm({...p, tax: p.tax_percent}); setShowAdd(true); }} style={{ padding: 6 }}><Icon name="edit" size={14} /></button>
+                                <button className="orbx-btn orbx-btn-ghost" onClick={() => handleEdit(p)} style={{ padding: 6 }}><Icon name="edit" size={14} /></button>
                                 <button className="orbx-btn orbx-btn-ghost" onClick={() => handleDeleteProduct(p.id)} style={{ padding: 6, color: T.colors.danger }}><Icon name="trash" size={14} /></button>
                             </div>
                             )}
