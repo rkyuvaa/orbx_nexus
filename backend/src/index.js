@@ -320,6 +320,16 @@ const initDB = async () => {
             IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='transfer_items' AND column_name='barcodes') THEN
                 ALTER TABLE transfer_items ADD COLUMN barcodes JSONB DEFAULT '[]';
             END IF;
+
+            -- GRN Items Updates
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='grn_items' AND column_name='barcodes') THEN
+                ALTER TABLE grn_items ADD COLUMN barcodes JSONB DEFAULT '[]';
+            END IF;
+
+            -- GRN Updates
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='grns' AND column_name='barcode_config') THEN
+                ALTER TABLE grns ADD COLUMN barcode_config JSONB DEFAULT '{}';
+            END IF;
         END $$;
     `;
     try {

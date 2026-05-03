@@ -42,4 +42,31 @@ router.put('/:id', authenticateToken, hasPermission('products', 'edit'), async (
   }
 });
 
+// GET lookup by barcode (for POS)
+router.get('/lookup/:barcode', authenticateToken, async (req, res) => {
+  const { barcode } = req.params;
+  try {
+    // 1. Check products table (manufacturer barcode or SKU)
+    const pRes = await pool.query(
+      'SELECT * FROM products WHERE barcode = $1 OR sku = $1',
+      [barcode]
+    );
+    if (pRes.rows.length > 0) return res.json(pRes.rows[0]);
+
+    // 2. Check barcodes_ledger
+    const lRes = await pool.query(
+      `SELECT p.* 
+       FROM barcodes_ledger bl
+       JOIN products p ON bl.product_id = p.id
+       WHERE bl.barcode = $1 AND bl.status = 'available'`,
+      [barcode]
+    );
+    if (lRes.rows.length > 0) return res.json(lRes.rows[0]);
+
+    res.status(404).json({ error: 'Product not found for this barcode' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

@@ -136,7 +136,12 @@ router.post('/:id/approve', authenticateToken, async (req, res) => {
             `, [item.product_id, branch_id, item.quantity, grn.id, grn.created_by, req.user.id]);
 
             // 3. Populate Barcodes Ledger
-            const barcodes = Array.isArray(item.barcodes) ? item.barcodes : [];
+            let barcodes = item.barcodes;
+            if (typeof barcodes === 'string') {
+                try { barcodes = JSON.parse(barcodes); } catch (e) { barcodes = []; }
+            }
+            barcodes = Array.isArray(barcodes) ? barcodes : [];
+            
             for (const bc of barcodes) {
                 await client.query(`
                     INSERT INTO barcodes_ledger (barcode, product_id, grn_id, branch_id, status)

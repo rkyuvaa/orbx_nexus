@@ -163,7 +163,15 @@ export default function GRN() {
                                                     ))}
                                                 </div>
                                             </td>
-                                            <td style={{ textAlign: 'right', fontWeight: 700 }}>{i.quantity}</td>
+                                            <td style={{ textAlign: 'right', fontWeight: 700 }}>
+                                                <div>{i.quantity}</div>
+                                                {i.barcodes && i.barcodes.length > 0 && (
+                                                    <div style={{ fontSize: 9, color: T.colors.brand, fontWeight: 400, marginTop: 4, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                                        {i.barcodes.slice(0, 3).map((bc, idx) => <span key={idx}>{bc}</span>)}
+                                                        {i.barcodes.length > 3 && <span>+ {i.barcodes.length - 3} more</span>}
+                                                    </div>
+                                                )}
+                                             </td>
                                         </tr>
                                     ))}
                                 </tbody>

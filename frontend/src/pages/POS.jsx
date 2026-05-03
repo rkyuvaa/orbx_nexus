@@ -70,11 +70,12 @@ export default function POS() {
       ) : true
     ), [search, products]);
 
-  const addToCart = useCallback((product) => {
+  const addToCart = useCallback((product, scannedBarcode = null) => {
     setCart(prev => {
-      const existing = prev.find(i => i.id === product.id);
-      if (existing) return prev.map(i => i.id === product.id ? { ...i, qty: i.qty + 1 } : i);
-      return [...prev, { ...product, qty: 1 }];
+      // For ledger barcodes, we want unique entries or at least track the last scanned barcode
+      const existing = prev.find(i => i.id === product.id && i.scannedBarcode === scannedBarcode);
+      if (existing) return prev.map(i => (i.id === product.id && i.scannedBarcode === scannedBarcode) ? { ...i, qty: i.qty + 1 } : i);
+      return [...prev, { ...product, qty: 1, scannedBarcode }];
     });
     setSearch('');
     searchRef.current?.focus();
@@ -99,7 +100,14 @@ export default function POS() {
       offline_id:    invNo,
       customer_name: customer?.name || 'Walk-in',
       customer_id:   customer?.id || null,
-      items:         cart.map(i => ({ product_id: i.id, product_name: i.name, qty: i.qty, price: i.price, tax: i.tax })),
+      items:         cart.map(i => ({ 
+        product_id: i.id, 
+        product_name: i.name, 
+        qty: i.qty, 
+        price: i.price, 
+        tax: i.tax,
+        barcode: i.scannedBarcode || i.barcode 
+      })),
       subtotal, tax_total: taxTotal, discount_pct: discount, discount_amt: discAmt,
       total_amount: total, payment_mode: payMode,
       synced: false, timestamp: new Date().toISOString(),
@@ -135,6 +143,25 @@ export default function POS() {
               placeholder={barcodeMode ? 'Scan barcode... (F1)' : 'Search by name, SKU or barcode... (F1)'}
               value={search}
               onChange={e => setSearch(e.target.value)}
+              onKeyDown={async (e) => {
+                if (e.key === 'Enter' && barcodeMode && search) {
+                  e.preventDefault();
+                  try {
+                    const res = await fetch(`${API_URL}/api/products/lookup/${search}`, {
+                      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                    });
+                    if (res.ok) {
+                      const product = await res.json();
+                      addToCart(product, search);
+                      setSearch('');
+                    } else {
+                      toast.error('Barcode not recognized');
+                    }
+                  } catch (err) {
+                    toast.error('Lookup failed');
+                  }
+                }
+              }}
               autoFocus
             />
           </div>
