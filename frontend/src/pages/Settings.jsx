@@ -536,9 +536,38 @@ export default function Settings() {
             <label style={{ fontSize: 12, fontWeight: 700, color: T.colors.textMid, marginBottom: 8, display: 'block' }}>CLOUD API URL</label>
             <input className="orbx-input" defaultValue={window.location.origin + '/api'} />
           </div>
-          <div style={{ display: 'flex', gap: 12, marginTop: 10 }}>
-            <button className="orbx-btn orbx-btn-primary" onClick={() => toast.success('Sync settings updated')}>Save Settings</button>
-            <button className="orbx-btn orbx-btn-danger" onClick={() => { if(window.confirm('Wipe local cache?')) toast.success('Cache cleared'); }}>Clear Local Cache</button>
+          <div style={{ display: 'flex', gap: 12, marginTop: 10, flexDirection: 'column' }}>
+            <div style={{ display: 'flex', gap: 12 }}>
+                <button className="orbx-btn orbx-btn-primary" onClick={() => toast.success('Sync settings updated')}>Save Settings</button>
+                <button className="orbx-btn orbx-btn-secondary" onClick={() => { if(window.confirm('Wipe local cache?')) toast.success('Cache cleared'); }}>Clear Local Cache</button>
+            </div>
+            
+            <div style={{ marginTop: 24, padding: 16, border: `1px solid ${T.colors.danger}30`, borderRadius: T.radius.md, background: T.colors.dangerSoft }}>
+                <h4 style={{ fontSize: 13, fontWeight: 700, color: T.colors.danger, marginBottom: 8 }}>Danger Zone</h4>
+                <p style={{ fontSize: 11, color: T.colors.textMid, marginBottom: 12 }}>This will permanently delete all Products, Inventory, Sales, and Purchases. Categories will be preserved.</p>
+                <button 
+                    className="orbx-btn orbx-btn-danger" 
+                    style={{ width: '100%', justifyContent: 'center' }}
+                    onClick={async () => {
+                        if (!window.confirm('CRITICAL: Are you absolutely sure? This will wipe ALL products and transactions!')) return;
+                        try {
+                            const res = await fetch('/api/auth/reset-demo-data', { 
+                                method: 'POST', 
+                                headers: { Authorization: `Bearer ${token}` } 
+                            });
+                            const data = await res.json();
+                            if (res.ok) {
+                                toast.success(data.message);
+                                window.location.reload();
+                            } else {
+                                toast.error(data.error);
+                            }
+                        } catch (err) { toast.error('Reset failed'); }
+                    }}
+                >
+                    Reset All Inventory Data
+                </button>
+            </div>
           </div>
         </div>
       </div>

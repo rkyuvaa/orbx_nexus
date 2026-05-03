@@ -327,4 +327,25 @@ router.get('/me', async (req, res) => {
     }
 });
 
+// Maintenance: Clear Demo Data (Superadmin Only)
+router.post('/reset-demo-data', async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: 'No token provided' });
+
+    const token = authHeader.split(' ')[1];
+    const decoded = verifyToken(token);
+    if (!decoded || !decoded.is_superadmin) {
+        return res.status(403).json({ error: 'Superadmin access required' });
+    }
+
+    try {
+        console.log('Resetting demo data...');
+        // Order: items first due to FK, then main tables
+        await pool.query('TRUNCATE sale_items, sales, purchase_items, purchases, transfers, inventory, products RESTART IDENTITY CASCADE');
+        res.json({ message: 'Inventory and transaction data cleared successfully' });
+    } catch (error) {
+        res.status(500).json({ error: 'Reset failed', details: error.message });
+    }
+});
+
 module.exports = router;
