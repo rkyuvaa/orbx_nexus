@@ -102,6 +102,13 @@ router.get('/logs', authenticateToken, hasPermission('inventory', 'view'), async
         
         query += ' ORDER BY l.timestamp DESC LIMIT 500';
         
+        const result = await pool.query(query, params);
+        res.json(result.rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // GET product traceability
 router.get('/trace/:id', authenticateToken, hasPermission('inventory', 'view'), async (req, res) => {
     try {

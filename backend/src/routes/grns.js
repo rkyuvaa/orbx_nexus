@@ -148,6 +148,11 @@ router.post('/:id/approve', authenticateToken, async (req, res) => {
             }
 
             // 4. Update received_qty in purchase_items
+            await client.query(`
+                UPDATE purchase_items 
+                SET received_qty = received_qty + $1 
+                WHERE purchase_id = $2 AND product_id = $3
+            `, [item.quantity, grn.purchase_id, item.product_id]);
         }
         
         // Update GRN status
