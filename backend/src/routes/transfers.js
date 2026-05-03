@@ -87,6 +87,21 @@ router.put('/:id/receive', authenticateToken, hasPermission('transfers', 'receiv
                 ON CONFLICT (product_id, branch_id)
                 DO UPDATE SET quantity = inventory.quantity + $3, last_updated = CURRENT_TIMESTAMP
             `, [item.product_id, transfer.to_branch_id, item.quantity]);
+
+            // Update barcode ledger locations
+            const barcodes = Array.isArray(item.barcodes) ? item.barcodes : [];
+            for (const bc of barcodes) {
+                await client.query(
+                    "UPDATE barcodes_ledger SET branch_id = $1 WHERE barcode = $2",
+                    [transfer.to_branch_id, bc]
+                );
+            }
+
+            // Log movement
+            await client.query(`
+                INSERT INTO inventory_logs (product_id, branch_id, action_type, qty_change, reference_type, reference_id, created_by)
+                VALUES ($1, $2, 'TRANSFER_IN', $3, 'TRANSFER', $4, $5)
+            `, [item.product_id, transfer.to_branch_id, item.quantity, transfer.id, req.user.id]);
         }
 
         await client.query('UPDATE transfers SET status = $1, received_at = CURRENT_TIMESTAMP WHERE id = $2', ['received', req.params.id]);

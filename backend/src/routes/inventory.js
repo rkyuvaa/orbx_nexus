@@ -102,8 +102,70 @@ router.get('/logs', authenticateToken, hasPermission('inventory', 'view'), async
         
         query += ' ORDER BY l.timestamp DESC LIMIT 500';
         
-        const result = await pool.query(query, params);
-        res.json(result.rows);
+// GET product traceability
+router.get('/trace/:id', authenticateToken, hasPermission('inventory', 'view'), async (req, res) => {
+    try {
+        const product_id = req.params.id;
+        
+        // 1. Product Summary & Hierarchy
+        const productRes = await pool.query(`
+            WITH RECURSIVE category_path AS (
+                SELECT id, name, parent_id, name::text as path, 1 as depth
+                FROM categories
+                WHERE parent_id IS NULL
+                UNION ALL
+                SELECT c.id, c.name, c.parent_id, cp.path || ' > ' || c.name, cp.depth + 1
+                FROM categories c
+                JOIN category_path cp ON c.parent_id = cp.id
+            )
+            SELECT p.*, cp.path as category_hierarchy, c.name as category_name
+            FROM products p
+            LEFT JOIN category_path cp ON p.category_id = cp.id
+            LEFT JOIN categories c ON p.category_id = c.id
+            WHERE p.id = $1
+        `, [product_id]);
+        
+        if (productRes.rows.length === 0) return res.status(404).json({ error: 'Product not found' });
+        const product = productRes.rows[0];
+
+        // 2. Barcode Ledger Breakdown
+        const ledgerRes = await pool.query(`
+            SELECT bl.*, b.name as branch_name, g.grn_number
+            FROM barcodes_ledger bl
+            JOIN branches b ON bl.branch_id = b.id
+            JOIN grns g ON bl.grn_id = g.id
+            WHERE bl.product_id = $1
+            ORDER BY bl.created_at DESC
+        `, [product_id]);
+
+        // 3. Movement History
+        const logsRes = await pool.query(`
+            SELECT 
+                l.*, 
+                u.name as created_by_name,
+                a.name as approved_by_name,
+                b.name as branch_name,
+                g.grn_number,
+                p.po_number,
+                s.name as supplier_name,
+                t.status as transfer_status
+            FROM inventory_logs l
+            JOIN users u ON l.created_by = u.id
+            LEFT JOIN users a ON l.approved_by = a.id
+            JOIN branches b ON l.branch_id = b.id
+            LEFT JOIN grns g ON l.reference_id = g.id AND l.reference_type = 'GRN'
+            LEFT JOIN purchases p ON g.purchase_id = p.id
+            LEFT JOIN suppliers s ON p.supplier_id = s.id
+            LEFT JOIN transfers t ON l.reference_id = t.id AND l.reference_type = 'TRANSFER'
+            WHERE l.product_id = $1
+            ORDER BY l.timestamp DESC
+        `, [product_id]);
+
+        res.json({
+            product,
+            ledger: ledgerRes.rows,
+            history: logsRes.rows
+        });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

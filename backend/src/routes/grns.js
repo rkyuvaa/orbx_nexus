@@ -135,12 +135,19 @@ router.post('/:id/approve', authenticateToken, async (req, res) => {
                 VALUES ($1, $2, 'GRN_RECEIPT', $3, 'GRN', $4, $5, $6)
             `, [item.product_id, branch_id, item.quantity, grn.id, grn.created_by, req.user.id]);
 
-            // 3. Update received_qty in purchase_items
-            await client.query(`
-                UPDATE purchase_items 
-                SET received_qty = received_qty + $1 
-                WHERE purchase_id = $2 AND product_id = $3
-            `, [item.quantity, grn.purchase_id, item.product_id]);
+            // 3. Populate Barcodes Ledger
+            const barcodes = Array.isArray(item.barcodes) ? item.barcodes : [];
+            for (const bc of barcodes) {
+                await client.query(`
+                    INSERT INTO barcodes_ledger (barcode, product_id, grn_id, branch_id, status)
+                    VALUES ($1, $2, $3, $4, 'available')
+                    ON CONFLICT (barcode) DO UPDATE SET 
+                        branch_id = EXCLUDED.branch_id,
+                        status = 'available'
+                `, [bc, item.product_id, grn.id, branch_id]);
+            }
+
+            // 4. Update received_qty in purchase_items
         }
         
         // Update GRN status

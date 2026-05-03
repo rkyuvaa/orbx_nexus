@@ -186,6 +186,15 @@ router.post('/setup', async (req, res) => {
                 approved_by INTEGER REFERENCES users(id),
                 timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
+            CREATE TABLE IF NOT EXISTS barcodes_ledger (
+                barcode VARCHAR(100) PRIMARY KEY,
+                product_id INTEGER REFERENCES products(id),
+                grn_id INTEGER REFERENCES grns(id),
+                branch_id INTEGER REFERENCES branches(id),
+                status VARCHAR(20) DEFAULT 'available',
+                sale_id INTEGER REFERENCES sales(id),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
         `);
 
         // Step 1b: Patch missing columns on existing tables (safe migrations)
@@ -207,6 +216,8 @@ router.post('/setup', async (req, res) => {
             ALTER TABLE products ADD COLUMN IF NOT EXISTS category_id INTEGER REFERENCES categories(id);
             ALTER TABLE purchase_items ADD COLUMN IF NOT EXISTS attributes JSONB DEFAULT '{}';
             ALTER TABLE purchase_items ADD COLUMN IF NOT EXISTS received_qty INTEGER DEFAULT 0;
+            ALTER TABLE sale_items ADD COLUMN IF NOT EXISTS barcode VARCHAR(100);
+            ALTER TABLE transfer_items ADD COLUMN IF NOT EXISTS barcodes JSONB DEFAULT '[]';
         `);
 
         // Step 2: (Optional) Check count for logging

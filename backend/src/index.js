@@ -233,6 +233,16 @@ const initDB = async () => {
             timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
 
+        CREATE TABLE IF NOT EXISTS barcodes_ledger (
+            barcode VARCHAR(100) PRIMARY KEY,
+            product_id INTEGER REFERENCES products(id),
+            grn_id INTEGER REFERENCES grns(id),
+            branch_id INTEGER REFERENCES branches(id),
+            status VARCHAR(20) DEFAULT 'available', -- available, sold, transferred
+            sale_id INTEGER REFERENCES sales(id),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
         INSERT INTO studio_sequences (module, prefix, padding) VALUES ('purchases', 'PO-2026-', 4) ON CONFLICT DO NOTHING;
         INSERT INTO studio_sequences (module, prefix, padding) VALUES ('grns', 'GRN-2026-', 4) ON CONFLICT DO NOTHING;
 
@@ -271,6 +281,16 @@ const initDB = async () => {
             END IF;
             IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='purchase_items' AND column_name='received_qty') THEN
                 ALTER TABLE purchase_items ADD COLUMN received_qty INTEGER DEFAULT 0;
+            END IF;
+
+            -- Sale Items Updates
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='sale_items' AND column_name='barcode') THEN
+                ALTER TABLE sale_items ADD COLUMN barcode VARCHAR(100);
+            END IF;
+
+            -- Transfer Items Updates
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='transfer_items' AND column_name='barcodes') THEN
+                ALTER TABLE transfer_items ADD COLUMN barcodes JSONB DEFAULT '[]';
             END IF;
         END $$;
     `;

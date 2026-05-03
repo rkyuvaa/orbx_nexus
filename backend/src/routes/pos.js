@@ -29,15 +29,29 @@ router.post('/sale', authenticateToken, async (req, res) => {
     // 2. Insert Sale Items and update inventory
     for (const item of items) {
       await client.query(
-        'INSERT INTO sale_items (sale_id, product_id, qty, price, tax) VALUES ($1, $2, $3, $4, $5)',
-        [saleId, item.product_id, item.qty, item.price, item.tax]
+        'INSERT INTO sale_items (sale_id, product_id, qty, price, tax, barcode) VALUES ($1, $2, $3, $4, $5, $6)',
+        [saleId, item.product_id, item.qty, item.price, item.tax, item.barcode || null]
       );
+
+      // If specific barcode sold, update ledger
+      if (item.barcode) {
+        await client.query(
+          "UPDATE barcodes_ledger SET status = 'sold', sale_id = $1 WHERE barcode = $2",
+          [saleId, item.barcode]
+        );
+      }
 
       // Deduct from branch inventory
       await client.query(
-        'UPDATE inventory SET stock = stock - $1 WHERE branch_id = $2 AND product_id = $3',
+        'UPDATE inventory SET quantity = quantity - $1 WHERE branch_id = $2 AND product_id = $3',
         [item.qty, branch_id, item.product_id]
       );
+
+      // Log movement
+      await client.query(`
+        INSERT INTO inventory_logs (product_id, branch_id, action_type, qty_change, reference_type, reference_id, created_by)
+        VALUES ($1, $2, 'SALE', $3, 'SALE', $4, $5)
+      `, [item.product_id, branch_id, -item.qty, saleId, user_id]);
     }
 
     await client.query('COMMIT');
