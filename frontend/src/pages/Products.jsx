@@ -79,7 +79,13 @@ export default function Products() {
       const res = await fetch(`${API_URL}/products${isEdit ? '/' + form.id : ''}`, {
         method: isEdit ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ ...form, price: parseFloat(form.price), tax: parseFloat(form.tax), stock: parseInt(form.stock) || 0 }),
+        body: JSON.stringify({ 
+          ...form, 
+          price: parseFloat(form.price), 
+          tax: parseFloat(form.tax), 
+          stock: parseInt(form.stock) || 0,
+          category_id: form.category_id ? parseInt(form.category_id) : null
+        }),
       });
       if (res.ok) { 
         toast.success(`Product ${isEdit ? 'updated' : 'added'}!`); 

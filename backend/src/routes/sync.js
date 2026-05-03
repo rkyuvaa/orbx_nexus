@@ -55,8 +55,8 @@ router.post('/', async (req, res) => {
                     const existing = await client.query('SELECT id FROM products WHERE sku = $1', [record.data.sku]);
                     if (existing.rows.length === 0) {
                         await client.query(
-                            'INSERT INTO products (sku, barcode, name, category, price, tax_percent, min_stock_level) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-                            [record.data.sku, record.data.barcode, record.data.name, record.data.category, record.data.price, record.data.tax_percent, record.data.min_stock_level]
+                            'INSERT INTO products (sku, barcode, name, category_id, price, tax_percent, min_stock_level) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+                            [record.data.sku, record.data.barcode, record.data.name, record.data.category_id, record.data.price, record.data.tax_percent, record.data.min_stock_level]
                         );
                     }
                 }
