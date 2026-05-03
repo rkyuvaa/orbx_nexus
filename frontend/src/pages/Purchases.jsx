@@ -172,7 +172,7 @@ export default function Purchases() {
                     <div className="orbx-modal" style={{ maxWidth: 900, width: '90%', padding: 0 }}>
                         <div style={{ padding: '24px 32px', borderBottom: `1px solid ${T.colors.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <h3 style={{ fontSize: 20, fontWeight: 800 }}>Create Purchase Order</h3>
-                            <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}><Icon name="close" /></button>
+                            <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}><Icon name="x" size={24} /></button>
                         </div>
                         
                         <div style={{ display: 'grid', gridTemplateColumns: '350px 1fr', height: '600px' }}>
@@ -237,9 +237,14 @@ export default function Purchases() {
                                         <div style={{ fontSize: 12, color: T.colors.textMuted }}>TOTAL AMOUNT</div>
                                         <div style={{ fontSize: 24, fontWeight: 900, color: T.colors.brand }}>₹{calculateTotals().total_amount.toLocaleString()}</div>
                                     </div>
-                                    <button className="orbx-btn orbx-btn-primary" style={{ padding: '12px 48px' }} onClick={handleCreatePO}>
-                                        Confirm Purchase Order
-                                    </button>
+                                    <div style={{ display: 'flex', gap: 12 }}>
+                                        <button className="orbx-btn orbx-btn-secondary" style={{ padding: '12px 32px' }} onClick={() => setShowModal(false)}>
+                                            Cancel
+                                        </button>
+                                        <button className="orbx-btn orbx-btn-primary" style={{ padding: '12px 48px' }} onClick={handleCreatePO}>
+                                            Confirm Purchase Order
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
