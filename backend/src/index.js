@@ -303,6 +303,11 @@ const initDB = async () => {
                 ALTER TABLE branches ADD COLUMN is_active BOOLEAN DEFAULT TRUE;
             END IF;
 
+            -- Products Table Updates
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='products' AND column_name='category_id') THEN
+                ALTER TABLE products ADD COLUMN category_id INTEGER REFERENCES categories(id);
+            END IF;
+
             -- Purchase Items Updates
             IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='purchase_items' AND column_name='attributes') THEN
                 ALTER TABLE purchase_items ADD COLUMN attributes JSONB DEFAULT '{}';
