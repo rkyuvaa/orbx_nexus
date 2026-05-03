@@ -174,6 +174,31 @@ router.post('/setup', async (req, res) => {
                 attributes JSONB DEFAULT '{}',
                 barcodes JSONB DEFAULT '[]'
             );
+            CREATE TABLE IF NOT EXISTS categories (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(100) NOT NULL,
+                parent_id INTEGER REFERENCES categories(id) ON DELETE CASCADE,
+                level INTEGER DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE TABLE IF NOT EXISTS products (
+                id SERIAL PRIMARY KEY,
+                sku VARCHAR(50) UNIQUE NOT NULL,
+                name VARCHAR(200) NOT NULL,
+                category_id INTEGER REFERENCES categories(id),
+                price DECIMAL(12, 2) NOT NULL,
+                tax_percent DECIMAL(5, 2) DEFAULT 0,
+                min_stock_level INTEGER DEFAULT 5,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE TABLE IF NOT EXISTS inventory (
+                id SERIAL PRIMARY KEY,
+                branch_id INTEGER REFERENCES branches(id),
+                product_id INTEGER REFERENCES products(id),
+                quantity INTEGER DEFAULT 0,
+                last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(branch_id, product_id)
+            );
             CREATE TABLE IF NOT EXISTS inventory_logs (
                 id SERIAL PRIMARY KEY,
                 product_id INTEGER NOT NULL,
